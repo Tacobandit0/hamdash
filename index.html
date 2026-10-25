@@ -19,7 +19,10 @@
   body { margin: 0; background: var(--bg); color: var(--text);
     font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     padding: env(safe-area-inset-top) max(12px, env(safe-area-inset-right)) 24px max(12px, env(safe-area-inset-left)); }
-  header { display: flex; flex-direction: column; gap: 2px; padding: 12px 4px; max-width: 1200px; margin: 0 auto; }
+  header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 12px 4px; max-width: 1200px; margin: 0 auto; }
+  header #updated { margin-top: 2px; }
+  .version { text-align: right; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; line-height: 1.35; }
+  .version .vnum { font-weight: 700; color: var(--text); font-size: 13px; }
   footer { max-width: 1200px; margin: 16px auto 0; display: flex; flex-direction: column; align-items: center; gap: 10px; }
   .sharebtn { display: inline-flex; align-items: center; gap: 6px; background: var(--panel); color: var(--text);
     border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font: 600 13px inherit; font-family: inherit; cursor: pointer; }
@@ -35,7 +38,8 @@
   h1 span { color: var(--accent); }
   .sub { color: var(--muted); font-size: 13px; }
   .grid { display: grid; gap: 12px; grid-template-columns: 1fr; max-width: 1200px; margin: 0 auto; }
-  @media (min-width: 900px) { .grid { grid-template-columns: 2fr 1fr; } .graymap { grid-row: span 2; } }
+  @media (min-width: 900px) { .grid { grid-template-columns: 1fr 1fr; align-items: start; } }
+  #map, .mapwrap { max-width: 960px; margin-left: auto; margin-right: auto; }
   .full { grid-column: 1 / -1; }
   .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; min-width: 0; }
   .panel h2 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); font-weight: 600; }
@@ -144,8 +148,11 @@
 </head>
 <body>
 <header>
-  <h1>Ham<span>Dash</span></h1>
-  <div class="sub" id="updated">Loading…</div>
+  <div>
+    <h1>Ham<span>Dash</span></h1>
+    <div class="sub" id="updated">Loading…</div>
+  </div>
+  <div class="version"><div class="vnum">v1.0</div><div>25/10/2026</div></div>
 </header>
 
 <div class="setup" id="homeSetup" hidden>
@@ -167,7 +174,7 @@
 </div>
 
 <div class="grid">
-  <section class="panel graymap">
+  <section class="panel full">
     <h2>Gray line &amp; sun position</h2>
     <canvas id="map" width="1440" height="720"></canvas>
     <div class="legend">
@@ -178,43 +185,9 @@
     </div>
   </section>
 
-  <section class="panel">
-    <h2>Clocks</h2>
-    <div class="clocks" id="clocks"></div>
-  </section>
-
-  <section class="panel">
-    <h2>Solar conditions</h2>
-    <div class="stats">
-      <div class="stat"><div class="l">Solar flux</div><div class="v" id="sfi">–</div><div class="n" id="sfiN"></div></div>
-      <div class="stat"><div class="l">Kp index</div><div class="v" id="kp">–</div><div class="n" id="kpN"></div></div>
-      <div class="stat"><div class="l">X-ray</div><div class="v" id="xray">–</div><div class="n" id="xrayN"></div></div>
-    </div>
-  </section>
-
-  <section class="panel full wxbar">
-    <div class="wxalert" id="wxAlert" hidden></div>
-    <div class="wxrow">
-      <div class="wxnow">
-        <div class="wxicon" id="wxIcon" aria-hidden="true">–</div>
-        <div><div class="wxtemp" id="wxTemp">–</div><div class="sub" id="wxText">Loading weather…</div></div>
-      </div>
-      <div class="wxgrid">
-        <div><span class="l">Wind</span><span id="wxWind">–</span></div>
-        <div><span class="l">Humidity</span><span id="wxRh">–</span></div>
-        <div><span class="l">Pressure</span><span id="wxPress">–</span></div>
-        <div><span class="l">Dew point</span><span id="wxDew">–</span></div>
-      </div>
-      <div class="wxside">
-        <div class="wxfc" id="wxFc"></div>
-        <div class="sub" id="wxWhere"></div>
-      </div>
-    </div>
-  </section>
-
   <section class="panel full">
     <div class="panelhead">
-      <h2>Band conditions right now</h2>
+      <h2>Current band conditions</h2>
       <span class="sub" id="bandsWhen"></span>
     </div>
     <div class="bandgrid" id="bands"></div>
@@ -240,6 +213,40 @@
       <span><i style="background:#ff4fa3"></i>Home</span>
       <span>Tap a dot for details · pinch or scroll to zoom, drag to move</span>
       <span class="actstatus" id="actStatus"></span>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Solar conditions</h2>
+    <div class="stats">
+      <div class="stat"><div class="l">Solar flux</div><div class="v" id="sfi">–</div><div class="n" id="sfiN"></div></div>
+      <div class="stat"><div class="l">Kp index</div><div class="v" id="kp">–</div><div class="n" id="kpN"></div></div>
+      <div class="stat"><div class="l">X-ray</div><div class="v" id="xray">–</div><div class="n" id="xrayN"></div></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Clocks</h2>
+    <div class="clocks" id="clocks"></div>
+  </section>
+
+  <section class="panel full wxbar">
+    <div class="wxalert" id="wxAlert" hidden></div>
+    <div class="wxrow">
+      <div class="wxnow">
+        <div class="wxicon" id="wxIcon" aria-hidden="true">–</div>
+        <div><div class="wxtemp" id="wxTemp">–</div><div class="sub" id="wxText">Loading weather…</div></div>
+      </div>
+      <div class="wxgrid">
+        <div><span class="l">Wind</span><span id="wxWind">–</span></div>
+        <div><span class="l">Humidity</span><span id="wxRh">–</span></div>
+        <div><span class="l">Pressure</span><span id="wxPress">–</span></div>
+        <div><span class="l">Dew point</span><span id="wxDew">–</span></div>
+      </div>
+      <div class="wxside">
+        <div class="wxfc" id="wxFc"></div>
+        <div class="sub" id="wxWhere"></div>
+      </div>
     </div>
   </section>
 </div>
