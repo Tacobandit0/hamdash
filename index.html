@@ -124,7 +124,12 @@
   .chips button.dx::after { content: "DX"; font-size: 10px; background: var(--good); color: #0b1117; border-radius: 4px; padding: 1px 4px; }
   .chips button.empty b { color: var(--muted); font-weight: 600; }
   .mapwrap { position: relative; }
-  #actmap { cursor: grab; touch-action: none; }
+  #actmap, #map { cursor: grab; touch-action: none; }
+  #map:active { cursor: grabbing; }
+  .resetbtn { background: var(--inset); color: var(--text); border: 1px solid var(--line); border-radius: 999px;
+    padding: 5px 12px; font: 600 12px inherit; font-family: inherit; cursor: pointer; }
+  .resetbtn:hover { border-color: var(--accent); }
+  .resetbtn[hidden] { display: none; }
   #actmap:active { cursor: grabbing; }
   .tapinfo { margin-top: 8px; background: var(--inset); border: 1px solid var(--spot); border-radius: 10px; padding: 10px 12px; font-size: 15px; }
   .tapinfo[hidden] { display: none; }
@@ -150,7 +155,7 @@
 <body>
 <header>
   <h1>Ham<span>Dash</span></h1>
-  <div class="vnum">v1.0</div>
+  <div class="vnum">v1.1.0</div>
   <div class="sub" id="updated">Loading…</div>
   <div class="sub vdate">25/10/2026</div>
 </header>
@@ -175,13 +180,17 @@
 
 <div class="grid">
   <section class="panel full">
-    <h2>Gray line &amp; sun position</h2>
+    <div class="panelhead">
+      <h2>Gray line &amp; sun position</h2>
+      <button class="resetbtn" id="grayReset" hidden>Reset view</button>
+    </div>
     <canvas id="map" width="1440" height="720"></canvas>
     <div class="legend">
       <span><i style="background:#f2b33d"></i>Sun overhead</span>
       <span><i style="background:#ff4fa3"></i>Home (<span id="homeLbl">not set</span>) <button class="linkbtn" id="homeEdit">Change</button></span>
       <span><i style="background:#c9a64b;opacity:.7"></i>Gray line</span>
       <span><i style="background:#02060c"></i>Night</span>
+      <span>Pinch or scroll to zoom, drag to move</span>
     </div>
   </section>
 
@@ -433,12 +442,31 @@ function drawHome(ctx, P) {
   ctx.beginPath(); ctx.arc(P.x(HOME.lon), P.y(HOME.lat), 8, 0, 7); ctx.fill(); ctx.stroke();
 }
 
-function drawGrayMap() {
-  const { ctx, P, sun } = drawWorld(document.getElementById("map"), VIEWS.world);
-  const sx = P.x(sun.lon), sy = P.y(sun.lat);
+// The gray line map can be zoomed and moved; GV is the box it shows (whole world unless you zoom).
+const grayCanvas = document.getElementById("map");
+const grayBase = document.createElement("canvas"); grayBase.width = 1440; grayBase.height = 720;
+let GV = { ...VIEWS.world }, grayBaseView = null;
+try { const g = JSON.parse(localStorage.getItem("hamdash.graybox") || "null"); if (g && g.lon1 > g.lon0) GV = g; } catch {}
+function drawGrayMap() {                 // full, sharp redraw (every minute and once zooming settles)
+  drawWorld(grayBase, GV);
+  grayBaseView = { ...GV };
+  composeGray();
+}
+function composeGray() {                 // quick: background (stretched while mid-gesture) plus sun and home
+  const ctx = grayCanvas.getContext("2d"), P = projector(GV, 1440, 720);
+  if (!grayBaseView) return;
+  if (grayBaseView.lon0 !== GV.lon0 || grayBaseView.lon1 !== GV.lon1 || grayBaseView.lat1 !== GV.lat1) {
+    const k = (grayBaseView.lon1 - grayBaseView.lon0) / (GV.lon1 - GV.lon0);
+    ctx.fillStyle = "#123a57"; ctx.fillRect(0, 0, 1440, 720);
+    ctx.drawImage(grayBase, P.x(grayBaseView.lon0), P.y(grayBaseView.lat1), 1440 * k, 720 * k);
+  } else ctx.drawImage(grayBase, 0, 0);
+  const sun = subsolar(new Date()), sx = P.x(sun.lon), sy = P.y(sun.lat);
   ctx.fillStyle = "rgba(242,179,61,.25)"; ctx.beginPath(); ctx.arc(sx, sy, 26, 0, 7); ctx.fill();
   ctx.fillStyle = "#f2b33d"; ctx.beginPath(); ctx.arc(sx, sy, 13, 0, 7); ctx.fill();
   drawHome(ctx, P);
+}
+function showGrayReset() {
+  document.getElementById("grayReset").hidden = (GV.lon1 - GV.lon0) >= 359.9;
 }
 
 // ================= Clocks =================
@@ -829,7 +857,7 @@ function selectedCluster() {
 
 // Mouse hover bubble (desktop)
 function showTip(ev) {
-  if (ev.pointerType !== "mouse" || pointers.size) return;
+  if (ev.pointerType !== "mouse" || actPZ.busy()) return;
   const c = clusterAt(ev);
   if (!c) { tip.style.display = "none"; return; }
   const items = c.items.slice(0, 6);
@@ -897,112 +925,137 @@ document.addEventListener("touchend", e => {            // no double-tap zoom
   lastTouchEnd = now;
 }, { passive: false });
 
-// ----- pinch to zoom, drag to move (touch); scroll wheel and click-drag (mouse) -----
+// ----- Pinch to zoom, drag to move (touch); scroll wheel and click-drag (mouse) -----
+// One shared controller, used by both maps so they behave the same.
 const MIN_SPAN = 4, MAX_SPAN = 360;     // degrees of longitude across the map
-function setView(lon0, lat1, span) {
+function clampView(lon0, lat1, span) {
   span = Math.max(MIN_SPAN, Math.min(MAX_SPAN, span));
   const latSpan = span / 2;
   lon0 = Math.max(-180, Math.min(180 - span, lon0));
   lat1 = Math.max(-90 + latSpan, Math.min(90, lat1));
-  V = { lon0, lon1: lon0 + span, lat0: lat1 - latSpan, lat1 };
-  view = "custom";
-  document.querySelectorAll("#viewSeg button").forEach(b => b.classList.remove("on"));
-  reCluster();
-  clearTimeout(setView.t);
-  setView.t = setTimeout(() => {           // redraw the background sharp once movement settles
-    rebuildActBase();
-    try { localStorage.setItem("hamdash.view", "custom"); localStorage.setItem("hamdash.mapbox", JSON.stringify(V)); } catch {}
-  }, 150);
+  return { lon0, lon1: lon0 + span, lat0: lat1 - latSpan, lat1 };
 }
-function geoAt(clientX, clientY) {         // map position under a point on screen
-  const r = actCanvas.getBoundingClientRect(), span = V.lon1 - V.lon0;
-  return { lon: V.lon0 + (clientX - r.left) / r.width * span, lat: V.lat1 - (clientY - r.top) / r.height * (span / 2), r };
-}
-function zoomAround(clientX, clientY, factor) {   // factor < 1 zooms in
-  const g = geoAt(clientX, clientY), span = V.lon1 - V.lon0;
-  const ns = Math.max(MIN_SPAN, Math.min(MAX_SPAN, span * factor));
-  const fx = (clientX - g.r.left) / g.r.width, fy = (clientY - g.r.top) / g.r.height;
-  setView(g.lon - fx * ns, g.lat + fy * ns / 2, ns);
-}
-const pointers = new Map();
-let gesture = null, dragged = false, multi = false;
-actCanvas.addEventListener("pointerdown", ev => {
-  if (ev.pointerType === "touch") return;          // touches are handled by the touch events below
-  actCanvas.setPointerCapture(ev.pointerId);
-  pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
-  if (pointers.size === 1) { dragged = false; multi = false; } else multi = true;
-  startGesture();
-});
-function startGesture() {
-  const pts = [...pointers.values()];
-  const span = V.lon1 - V.lon0;
-  if (pts.length === 1) gesture = { type: "pan", x: pts[0].x, y: pts[0].y, lon0: V.lon0, lat1: V.lat1, span };
-  else if (pts.length >= 2) {
-    const [a, b] = pts, mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
-    gesture = { type: "pinch", dist: Math.hypot(a.x - b.x, a.y - b.y) || 1, anchor: geoAt(mx, my), span };
+// opts: getView() → current box, setView(box) → apply it, onTap(ev) for a quick tap/click, onDrag() when movement starts
+function attachPanZoom(canvas, opts) {
+  const pointers = new Map();
+  let gesture = null, dragged = false, multi = false;
+  const geoAt = (cx, cy) => {
+    const V = opts.getView(), r = canvas.getBoundingClientRect(), span = V.lon1 - V.lon0;
+    return { lon: V.lon0 + (cx - r.left) / r.width * span, lat: V.lat1 - (cy - r.top) / r.height * (span / 2), r };
+  };
+  function start() {
+    const pts = [...pointers.values()], V = opts.getView(), span = V.lon1 - V.lon0;
+    if (pts.length === 1) gesture = { type: "pan", x: pts[0].x, y: pts[0].y, lon0: V.lon0, lat1: V.lat1, span };
+    else if (pts.length >= 2) {
+      const [a, b] = pts;
+      gesture = { type: "pinch", dist: Math.hypot(a.x - b.x, a.y - b.y) || 1, anchor: geoAt((a.x + b.x) / 2, (a.y + b.y) / 2), span };
+    } else gesture = null;
   }
-}
-actCanvas.addEventListener("pointermove", ev => {
-  if (ev.pointerType === "touch" || !pointers.has(ev.pointerId) || !gesture) return;
-  pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
-  moveGesture();
-});
-function moveGesture() {
-  const pts = [...pointers.values()], r = actCanvas.getBoundingClientRect();
-  if (gesture.type === "pan" && pts.length === 1) {
-    const dx = pts[0].x - gesture.x, dy = pts[0].y - gesture.y;
-    if (!dragged && Math.hypot(dx, dy) < 6) return;       // small wiggles still count as a tap
-    dragged = true; tip.style.display = "none";
-    const degPerPx = gesture.span / r.width;
-    setView(gesture.lon0 - dx * degPerPx, gesture.lat1 + dy * degPerPx, gesture.span);
-  } else if (gesture.type === "pinch" && pts.length >= 2) {
-    dragged = true;
-    const [a, b] = pts, mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
-    const ns = Math.max(MIN_SPAN, Math.min(MAX_SPAN, gesture.span * gesture.dist / (Math.hypot(a.x - b.x, a.y - b.y) || 1)));
-    const fx = (mx - r.left) / r.width, fy = (my - r.top) / r.height;   // keep the pinched spot under the fingers
-    setView(gesture.anchor.lon - fx * ns, gesture.anchor.lat + fy * ns / 2, ns);
+  function move() {
+    if (!gesture) return;
+    const pts = [...pointers.values()], r = canvas.getBoundingClientRect();
+    if (gesture.type === "pan" && pts.length === 1) {
+      const dx = pts[0].x - gesture.x, dy = pts[0].y - gesture.y;
+      if (!dragged && Math.hypot(dx, dy) < 6) return;          // small wiggles still count as a tap
+      if (!dragged && opts.onDrag) opts.onDrag();
+      dragged = true;
+      const degPerPx = gesture.span / r.width;
+      opts.setView(clampView(gesture.lon0 - dx * degPerPx, gesture.lat1 + dy * degPerPx, gesture.span));
+    } else if (gesture.type === "pinch" && pts.length >= 2) {
+      if (!dragged && opts.onDrag) opts.onDrag();
+      dragged = true;
+      const [a, b] = pts, mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      const ns = Math.max(MIN_SPAN, Math.min(MAX_SPAN, gesture.span * gesture.dist / (Math.hypot(a.x - b.x, a.y - b.y) || 1)));
+      const fx = (mx - r.left) / r.width, fy = (my - r.top) / r.height;   // keep the pinched spot under the fingers
+      opts.setView(clampView(gesture.anchor.lon - fx * ns, gesture.anchor.lat + fy * ns / 2, ns));
+    }
   }
+  // mouse and pen
+  canvas.addEventListener("pointerdown", ev => {
+    if (ev.pointerType === "touch") return;                    // touches are handled by the touch events below
+    canvas.setPointerCapture(ev.pointerId);
+    pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    if (pointers.size === 1) { dragged = false; multi = false; } else multi = true;
+    start();
+  });
+  canvas.addEventListener("pointermove", ev => {
+    if (ev.pointerType === "touch" || !pointers.has(ev.pointerId)) return;
+    pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    move();
+  });
+  const endPointer = ev => {
+    if (ev.pointerType === "touch") return;
+    const wasTap = ev.type === "pointerup" && pointers.size === 1 && !dragged && !multi;
+    pointers.delete(ev.pointerId);
+    if (wasTap && opts.onTap) opts.onTap(ev);
+    start();
+  };
+  canvas.addEventListener("pointerup", endPointer);
+  canvas.addEventListener("pointercancel", endPointer);
+  // iPhone / touchscreens: the map owns every touch that starts on it, so Safari never scrolls or zooms the page from here
+  const sync = e => { pointers.clear(); for (const t of e.touches) pointers.set("t" + t.identifier, { x: t.clientX, y: t.clientY }); };
+  canvas.addEventListener("touchstart", e => {
+    e.preventDefault();
+    if (e.touches.length === 1) { dragged = false; multi = false; } else multi = true;
+    sync(e); start();
+  }, { passive: false });
+  canvas.addEventListener("touchmove", e => { e.preventDefault(); sync(e); move(); }, { passive: false });
+  const endTouch = e => {
+    e.preventDefault();
+    const t = e.changedTouches[0];
+    const wasTap = e.type === "touchend" && e.touches.length === 0 && !dragged && !multi;
+    sync(e); start();                                          // lifting one finger of a pinch continues as a drag
+    if (wasTap && t && opts.onTap) opts.onTap({ clientX: t.clientX, clientY: t.clientY, pointerType: "touch" });
+  };
+  canvas.addEventListener("touchend", endTouch, { passive: false });
+  canvas.addEventListener("touchcancel", endTouch, { passive: false });
+  // scroll wheel zooms around the cursor
+  canvas.addEventListener("wheel", ev => {
+    ev.preventDefault();
+    const g = geoAt(ev.clientX, ev.clientY), V = opts.getView();
+    const ns = Math.max(MIN_SPAN, Math.min(MAX_SPAN, (V.lon1 - V.lon0) * Math.pow(1.0015, ev.deltaY)));
+    const fx = (ev.clientX - g.r.left) / g.r.width, fy = (ev.clientY - g.r.top) / g.r.height;
+    opts.setView(clampView(g.lon - fx * ns, g.lat + fy * ns / 2, ns));
+  }, { passive: false });
+  return { busy: () => pointers.size > 0 };
 }
-function endPointer(ev) {
-  if (ev.pointerType === "touch") return;
-  const wasTap = ev.type === "pointerup" && pointers.size === 1 && !dragged && !multi;
-  pointers.delete(ev.pointerId);
-  if (wasTap) onTap(ev);              // a quick tap or click (not a drag or pinch) opens a dot's info
-  if (pointers.size) startGesture(); else gesture = null;
-}
-actCanvas.addEventListener("pointerup", endPointer);
-actCanvas.addEventListener("pointercancel", endPointer);
 
-// iPhone / touchscreens: the map owns every touch that starts on it, so Safari never scrolls or zooms the page from here.
-function syncTouches(e) {
-  pointers.clear();
-  for (const t of e.touches) pointers.set("t" + t.identifier, { x: t.clientX, y: t.clientY });
-}
-actCanvas.addEventListener("touchstart", e => {
-  e.preventDefault();
-  if (e.touches.length === 1) { dragged = false; multi = false; } else multi = true;
-  syncTouches(e); startGesture();
-}, { passive: false });
-actCanvas.addEventListener("touchmove", e => {
-  e.preventDefault();
-  if (!gesture) return;
-  syncTouches(e); moveGesture();
-}, { passive: false });
-function endTouch(e) {
-  e.preventDefault();
-  const t = e.changedTouches[0];
-  const wasTap = e.type === "touchend" && e.touches.length === 0 && !dragged && !multi;
-  syncTouches(e);
-  if (pointers.size) startGesture(); else gesture = null;     // lifting one finger of a pinch continues as a drag
-  if (wasTap && t) onTap({ clientX: t.clientX, clientY: t.clientY, pointerType: "touch" });
-}
-actCanvas.addEventListener("touchend", endTouch, { passive: false });
-actCanvas.addEventListener("touchcancel", endTouch, { passive: false });
+// Band activity map
+const actPZ = attachPanZoom(actCanvas, {
+  getView: () => V,
+  setView: box => {
+    V = box; view = "custom";
+    document.querySelectorAll("#viewSeg button").forEach(b => b.classList.remove("on"));
+    reCluster();
+    clearTimeout(actPZ.t);
+    actPZ.t = setTimeout(() => {           // redraw the background sharp once movement settles
+      rebuildActBase();
+      try { localStorage.setItem("hamdash.view", "custom"); localStorage.setItem("hamdash.mapbox", JSON.stringify(V)); } catch {}
+    }, 150);
+  },
+  onTap,
+  onDrag: () => { tip.style.display = "none"; },
+});
 
-actCanvas.addEventListener("wheel", ev => {
-  ev.preventDefault();
-  zoomAround(ev.clientX, ev.clientY, Math.pow(1.0015, ev.deltaY));
-}, { passive: false });
+// Gray line map
+attachPanZoom(grayCanvas, {
+  getView: () => GV,
+  setView: box => {
+    GV = box;
+    showGrayReset();
+    requestAnimationFrame(composeGray);
+    clearTimeout(grayPZt);
+    grayPZt = setTimeout(() => {
+      drawGrayMap();
+      try { localStorage.setItem("hamdash.graybox", JSON.stringify(GV)); } catch {}
+    }, 150);
+  },
+});
+let grayPZt = null;
+document.getElementById("grayReset").onclick = () => {
+  GV = { ...VIEWS.world }; showGrayReset(); drawGrayMap();
+  try { localStorage.removeItem("hamdash.graybox"); } catch {}
+};
 
 // ================= Home location setup =================
 function latLonToGrid(lat, lon) {
@@ -1144,7 +1197,7 @@ document.getElementById("shareBtn").onclick = async () => {
 document.getElementById("shareClose").onclick = () => { document.getElementById("shareBox").hidden = true; };
 
 // ================= Start =================
-drawClocks(); renderSolar(); renderBands(); drawGrayMap(); rebuildActBase(); renderActivity();
+drawClocks(); renderSolar(); renderBands(); drawGrayMap(); showGrayReset(); rebuildActBase(); renderActivity();
 requestAnimationFrame(frame);
 setInterval(drawClocks, 1000);
 setInterval(() => { drawGrayMap(); rebuildActBase(); renderBands(); renderActivity(); }, 60000);
