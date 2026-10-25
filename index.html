@@ -19,21 +19,14 @@
   body { margin: 0; background: var(--bg); color: var(--text);
     font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     padding: env(safe-area-inset-top) max(12px, env(safe-area-inset-right)) 24px max(12px, env(safe-area-inset-left)); }
-  header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap;
-    padding: 12px 4px; max-width: 1200px; margin: 0 auto; }
-  .hright { display: flex; align-items: center; gap: 12px; }
-  @media (max-width: 600px) {
-    header { display: grid; grid-template-columns: 1fr auto; align-items: center; row-gap: 4px; }
-    .hright { display: contents; }
-    .hright #updated { grid-column: 1 / -1; grid-row: 2; }
-    .hright .sharebtn { grid-column: 2; grid-row: 1; }
-  }
+  header { display: flex; flex-direction: column; gap: 2px; padding: 12px 4px; max-width: 1200px; margin: 0 auto; }
+  footer { max-width: 1200px; margin: 16px auto 0; display: flex; flex-direction: column; align-items: center; gap: 10px; }
   .sharebtn { display: inline-flex; align-items: center; gap: 6px; background: var(--panel); color: var(--text);
     border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font: 600 13px inherit; font-family: inherit; cursor: pointer; }
   .sharebtn:hover { border-color: var(--accent); }
   .sharebtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .sharebtn.done { border-color: var(--good); color: var(--good); }
-  .sharebox { max-width: 1200px; margin: 0 auto 12px; background: var(--panel); border: 1px solid var(--accent); border-radius: 10px;
+  .sharebox { width: 100%; background: var(--panel); border: 1px solid var(--accent); border-radius: 10px;
     padding: 10px 14px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 14px; }
   .sharebox[hidden] { display: none; }
   .sharebox input { flex: 1; min-width: 220px; background: var(--inset); color: var(--text); border: 1px solid var(--line);
@@ -146,24 +139,14 @@
   .tip .call { font-weight: 700; color: var(--spot); font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
   .tip .where { color: var(--muted); margin-bottom: 4px; }
   .actstatus { font-size: 12px; color: var(--muted); }
+  .actstatus:empty { display: none; }
 </style>
 </head>
 <body>
 <header>
   <h1>Ham<span>Dash</span></h1>
-  <div class="hright">
-    <div class="sub" id="updated">Loading…</div>
-    <button class="sharebtn" id="shareBtn" aria-label="Share HamDash with friends">
-      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span id="shareLbl">Share</span>
-    </button>
-  </div>
+  <div class="sub" id="updated">Loading…</div>
 </header>
-<div class="sharebox" id="shareBox" hidden>
-  <span>Copy this link to share HamDash:</span>
-  <input id="shareUrl" readonly aria-label="HamDash link">
-  <button class="linkbtn" id="shareClose">Done</button>
-</div>
 
 <div class="setup" id="homeSetup" hidden>
   <div>
@@ -235,7 +218,6 @@
       <span class="sub" id="bandsWhen"></span>
     </div>
     <div class="bandgrid" id="bands"></div>
-    <div class="note">Rule of thumb from solar flux, Kp, X-ray and day/night/gray line at your QTH, updated every minute; not an official forecast. "On air" = stations on the activity map below (last 30 min).</div>
   </section>
 
   <section class="panel full">
@@ -257,11 +239,22 @@
       <span><i style="background:var(--spot);box-shadow:0 0 6px var(--spot)"></i>Station on the air (brighter = more recent)</span>
       <span><i style="background:#ff4fa3"></i>Home</span>
       <span>Tap a dot for details · pinch or scroll to zoom, drag to move</span>
-      <span class="actstatus" id="actStatus">Loading spots…</span>
+      <span class="actstatus" id="actStatus"></span>
     </div>
-    <div class="note">Shows stations spotted in the last 30 minutes on the HamQTH DX cluster (heard in or operating from North America) and Parks on the Air. FT8 and FT4 are left out. A band gets a green <b>DX</b> tag when 5 or more stations over 3,000 miles away are being heard. Refreshes every minute.</div>
   </section>
 </div>
+
+<footer>
+  <button class="sharebtn" id="shareBtn" aria-label="Share HamDash with friends">
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span id="shareLbl">Share with friends</span>
+  </button>
+  <div class="sharebox" id="shareBox" hidden>
+    <span>Copy this link to share HamDash:</span>
+    <input id="shareUrl" readonly aria-label="HamDash link">
+    <button class="linkbtn" id="shareClose">Done</button>
+  </div>
+</footer>
 
 <script>
 // ================= Settings =================
@@ -455,6 +448,15 @@ function drawClocks() {
   document.getElementById("clocks").innerHTML = html;
 }
 
+// ================= "Updated at" in the header =================
+let lastUpdate = null;
+const updatedText = () => lastUpdate ? "Updated at " + lastUpdate.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "Loading…";
+function markUpdated() {
+  lastUpdate = new Date();
+  const el = document.getElementById("updated");
+  if (!el.querySelector(".err")) el.textContent = updatedText();
+}
+
 // ================= Solar data (NOAA SWPC) =================
 const S = { sfi: null, kp: null, xray: null };
 async function getJSON(url) { const r = await fetch(url, { cache: "no-store" }); if (!r.ok) throw new Error(r.status); return r.json(); }
@@ -479,10 +481,11 @@ async function loadSolar() {
   const results = await Promise.allSettled(jobs);
   const failed = results.filter(r => r.status === "rejected").length;
   renderSolar(); renderBands();
+  if (failed < 3) lastUpdate = new Date();
   if (failed === 3 && isFile) document.getElementById("fileWarn").classList.add("on");
   document.getElementById("updated").innerHTML = failed
     ? `<span class="err">Solar data couldn't load (${failed}/3). Retrying in 10 min.</span>`
-    : "Solar data " + new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    : updatedText();
 }
 function xrayClass(f) {
   if (f == null) return "–";
@@ -658,13 +661,13 @@ function pruneAndRender() {
 
 async function pollHamQTH() {
   const i = qTurn++ % QUERIES.length;
-  try { lastResp[i] = await getJSON(QUERIES[i]); ingestHamQTH(lastResp[i]); hamqthOk = true; }
+  try { lastResp[i] = await getJSON(QUERIES[i]); ingestHamQTH(lastResp[i]); hamqthOk = true; markUpdated(); }
   catch (e) { hamqthOk = false; if (isFile) document.getElementById("fileWarn").classList.add("on"); if (!potaOk) actOk = false; }
   pruneAndRender();
   resolveUS();
 }
 async function pollPOTA() {
-  try { ingestPOTA(await getJSON("https://api.pota.app/spot/activator")); potaOk = true; }
+  try { ingestPOTA(await getJSON("https://api.pota.app/spot/activator")); potaOk = true; markUpdated(); }
   catch (e) { potaOk = false; }
   pruneAndRender();
 }
@@ -714,9 +717,8 @@ function renderActivity() {
 
   renderBands();   // keep the "stations spotted" column in step with the map
   const st = document.getElementById("actStatus");
-  st.innerHTML = actOk === null ? "Loading spots…"
-    : actOk === false ? `<span class="err">Couldn't reach the spot services. Retrying every minute.</span>`
-    : `Updated ${actOk.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+  st.innerHTML = actOk === false ? `<span class="err">Couldn't reach the spot services. Retrying every minute.</span>` : "";
+
 
   // group stations that would sit on top of each other at this zoom
   reCluster();
@@ -1126,7 +1128,7 @@ document.getElementById("shareBtn").onclick = async () => {
     await navigator.clipboard.writeText(SHARE_URL);
     const btn = document.getElementById("shareBtn"), lbl = document.getElementById("shareLbl");
     btn.classList.add("done"); lbl.textContent = "Link copied";
-    setTimeout(() => { btn.classList.remove("done"); lbl.textContent = "Share"; }, 2500);
+    setTimeout(() => { btn.classList.remove("done"); lbl.textContent = "Share with friends"; }, 2500);
   } catch {                                                       // no clipboard access: show the link to copy by hand
     const box = document.getElementById("shareBox"), inp = document.getElementById("shareUrl");
     inp.value = SHARE_URL; box.hidden = false; inp.focus(); inp.select();
