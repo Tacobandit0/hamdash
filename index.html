@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="HamDash">
+<meta name="theme-color" content="#0b1117">
+<title>HamDash</title>
+<style>
+  :root {
+    --bg: #0b1117; --panel: #121b24; --inset: #0e161e; --line: #223140; --text: #e3eaf1; --muted: #8a9bab;
+    --accent: #f2b33d; --good: #3ecf7a; --fair: #e8c547; --poor: #e5604f; --spot: #ffd23f;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: env(safe-area-inset-top) max(12px, env(safe-area-inset-right)) 24px max(12px, env(safe-area-inset-left)); }
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    padding: 12px 4px; max-width: 1200px; margin: 0 auto; }
+  h1 { margin: 0; font-size: 20px; letter-spacing: .5px; }
+  h1 span { color: var(--accent); }
+  .sub { color: var(--muted); font-size: 13px; }
+  .grid { display: grid; gap: 12px; grid-template-columns: 1fr; max-width: 1200px; margin: 0 auto; }
+  @media (min-width: 900px) { .grid { grid-template-columns: 2fr 1fr; } .graymap { grid-row: span 2; } }
+  .full { grid-column: 1 / -1; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; min-width: 0; }
+  .panel h2 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); font-weight: 600; }
+  .panelhead { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .panelhead h2 { margin: 0; }
+  canvas { width: 100%; height: auto; display: block; border-radius: 6px; background: #123a57; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+  .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+  .clocks { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .clock { background: var(--inset); border-radius: 8px; padding: 8px 10px; }
+  .clock .t { font: 600 22px/1.2 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  .clock.big { grid-column: span 2; }
+  .clock.big .t { font-size: 34px; color: var(--accent); }
+  .clock .l { font-size: 12px; color: var(--muted); }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .stat { background: var(--inset); border-radius: 8px; padding: 8px; text-align: center; }
+  .stat .v { font: 600 24px/1.2 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  .stat .l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  .stat .n { font-size: 11px; color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 6px 4px; text-align: center; border-bottom: 1px solid var(--line); }
+  th { font-size: 12px; color: var(--muted); font-weight: 600; }
+  td:first-child, th:first-child { text-align: left; font-weight: 600; }
+  .pill { display: inline-block; min-width: 54px; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #0b1117; text-align: center; }
+  .Good { background: var(--good); } .Fair { background: var(--fair); } .Poor { background: var(--poor); }
+  .bandgrid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
+  @media (max-width: 700px) { .bandgrid { grid-template-columns: repeat(4, 1fr); } }
+  .btile { background: var(--rc); color: #0b1117; border-radius: 8px; padding: 6px 4px 7px; text-align: center; }
+  .btile .bn { font-weight: 800; font-size: 15px; }
+  .btile .br { font-size: 12px; font-weight: 700; }
+  .btile .bs { font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; opacity: .75; }
+  .btile.live .bs { opacity: 1; }
+  /* Active band: flashes bright with a glow in its own color */
+  .btile.live { animation: flash 1.4s ease-in-out infinite; }
+  @keyframes flash {
+    0%, 100% { filter: brightness(1); box-shadow: 0 0 0 0 transparent; }
+    50% { filter: brightness(1.35); box-shadow: 0 0 0 2px #fff, 0 0 16px 2px var(--rc); }
+  }
+  @media (prefers-reduced-motion: reduce) { .btile.live { animation: none; box-shadow: 0 0 0 2px #fff; } }
+  .note { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .err { color: var(--poor); }
+  .setup { max-width: 1200px; margin: 0 auto 12px; background: var(--panel); border: 1px solid var(--accent);
+    border-radius: 10px; padding: 12px 14px; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
+  .setup[hidden] { display: none; }
+  .setupform { display: flex; gap: 8px; flex-wrap: wrap; }
+  .setupform input { width: 96px; background: var(--inset); color: var(--text); border: 1px solid var(--line); border-radius: 8px;
+    padding: 7px 10px; font: 600 15px ui-monospace, "SF Mono", Menlo, Consolas, monospace; text-transform: uppercase; }
+  .setupform button { background: var(--inset); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; font: inherit; font-size: 14px; cursor: pointer; }
+  .setupform button.primary { background: var(--accent); border-color: var(--accent); color: #0b1117; font-weight: 700; }
+  .setupform button[hidden] { display: none; }
+  #homeErr:empty { display: none; }
+  .linkbtn { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; font-size: 12px; cursor: pointer; text-decoration: underline; }
+  .warn { display: none; max-width: 1200px; margin: 0 auto 12px; background: #2a1714; border: 1px solid var(--poor);
+    border-radius: 10px; padding: 10px 14px; font-size: 14px; }
+  .warn.on { display: block; }
+
+  /* Activity map */
+  .seg { display: inline-flex; background: var(--inset); border: 1px solid var(--line); border-radius: 999px; padding: 2px; }
+  .seg button, .chips button { border: 0; background: none; color: var(--muted); font: 600 12px/1 inherit; font-family: inherit;
+    padding: 6px 11px; border-radius: 999px; cursor: pointer; }
+  .seg button.on { background: var(--accent); color: #0b1117; }
+  .seg button:focus-visible, .chips button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .chips button { background: var(--inset); border: 1px solid var(--line); display: inline-flex; gap: 6px; align-items: center; }
+  .chips button.on { color: var(--text); border-color: var(--spot); }
+  .chips button b { font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+  .chips button.dx { border-color: var(--good); }
+  .chips button.dx::after { content: "DX"; font-size: 10px; background: var(--good); color: #0b1117; border-radius: 4px; padding: 1px 4px; }
+  .chips button.empty b { color: var(--muted); font-weight: 600; }
+  .mapwrap { position: relative; }
+  #actmap { cursor: crosshair; }
+  .tip { position: absolute; pointer-events: none; background: rgba(11,17,23,.95); border: 1px solid var(--spot);
+    border-radius: 8px; padding: 8px 10px; font-size: 12px; min-width: 200px; max-width: 300px; display: none; z-index: 2;
+    box-shadow: 0 6px 24px rgba(0,0,0,.5); }
+  .tip .row { display: flex; justify-content: space-between; gap: 10px; padding: 2px 0; }
+  .tip .call { font-weight: 700; color: var(--spot); font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  .tip .where { color: var(--muted); margin-bottom: 4px; }
+  .actstatus { font-size: 12px; color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Ham<span>Dash</span></h1>
+  <div class="sub" id="updated">Loading…</div>
+</header>
+
+<div class="setup" id="homeSetup" hidden>
+  <div>
+    <b>Where's your station?</b>
+    <div class="sub">Enter your grid square. It's saved only in this browser, never in the page itself, so it stays private.</div>
+  </div>
+  <form id="homeForm" class="setupform">
+    <input id="homeGrid" placeholder="FN20" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Grid square">
+    <button type="submit" class="primary">Save</button>
+    <button type="button" id="homeGeo">Use my location</button>
+    <button type="button" id="homeCancel" hidden>Cancel</button>
+  </form>
+  <div class="sub err" id="homeErr"></div>
+</div>
+
+<div class="warn" id="fileWarn">
+  <b>The live data can't load while this page is opened as a file.</b> Browsers block a file on your computer from pulling data from other websites. Open HamDash from its web address (GitHub Pages) instead, and the solar numbers and activity map will fill in.
+</div>
+
+<div class="grid">
+  <section class="panel graymap">
+    <h2>Gray line &amp; sun position</h2>
+    <canvas id="map" width="1440" height="720"></canvas>
+    <div class="legend">
+      <span><i style="background:#f2b33d"></i>Sun overhead</span>
+      <span><i style="background:#ff4fa3"></i>Home (<span id="homeLbl">not set</span>) <button class="linkbtn" id="homeEdit">Change</button></span>
+      <span><i style="background:#c9a64b;opacity:.7"></i>Gray line</span>
+      <span><i style="background:#02060c"></i>Night</span>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Clocks</h2>
+    <div class="clocks" id="clocks"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Solar conditions</h2>
+    <div class="stats">
+      <div class="stat"><div class="l">Solar flux</div><div class="v" id="sfi">–</div><div class="n" id="sfiN"></div></div>
+      <div class="stat"><div class="l">Kp index</div><div class="v" id="kp">–</div><div class="n" id="kpN"></div></div>
+      <div class="stat"><div class="l">X-ray</div><div class="v" id="xray">–</div><div class="n" id="xrayN"></div></div>
+    </div>
+  </section>
+
+  <section class="panel full">
+    <div class="panelhead">
+      <h2>Band conditions right now</h2>
+      <span class="sub" id="bandsWhen"></span>
+    </div>
+    <div class="bandgrid" id="bands"></div>
+    <div class="note">Rule of thumb from solar flux, Kp, X-ray and day/night/gray line at your QTH, updated every minute; not an official forecast. "On air" = stations on the activity map below (last 30 min).</div>
+  </section>
+
+  <section class="panel full">
+    <div class="panelhead">
+      <h2>Band activity</h2>
+      <div class="seg" id="viewSeg">
+        <button data-v="world">World</button>
+        <button data-v="na" class="on">North America</button>
+        <button data-v="ne">Northeast</button>
+      </div>
+    </div>
+    <div class="chips" id="bandChips"></div>
+    <div class="mapwrap">
+      <canvas id="actmap" width="1440" height="720"></canvas>
+      <div class="tip" id="tip"></div>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--spot);box-shadow:0 0 6px var(--spot)"></i>Station on the air (brighter = more recent)</span>
+      <span><i style="background:#ff4fa3"></i>Home</span>
+      <span>Hover or tap a dot for details</span>
+      <span class="actstatus" id="actStatus">Loading spots…</span>
+    </div>
+    <div class="note">Shows stations spotted in the last 30 minutes on the HamQTH DX cluster (heard in or operating from North America) and Parks on the Air. FT8 and FT4 are left out. A band gets a green <b>DX</b> tag when 5 or more stations over 3,000 miles away are being heard. Refreshes every minute.</div>
+  </section>
+</div>
+
+<script>
+// ================= Settings =================
+// Your location is never written into this file. It's kept in this browser's storage only.
+const HOME = { grid: "", lat: 39.8, lon: -98.6, unset: true };   // center of the US until you set yours
+function applyHome(grid) {
+  const p = gridToLatLon(grid);
+  if (!p) return false;
+  Object.assign(HOME, { grid: grid.toUpperCase(), lat: p.lat, lon: p.lon, unset: false });
+  document.getElementById("homeLbl").textContent = HOME.grid;
+  return true;
+}
+const ZONES = [
+  { label: "London",  tz: "Europe/London" },
+  { label: "Berlin",  tz: "Europe/Berlin" },
+  { label: "Tokyo",   tz: "Asia/Tokyo" },
+  { label: "Sydney",  tz: "Australia/Sydney" },
+];
+const SPOT_WINDOW_MIN = 30;    // how long a station stays on the map
+const DX_MILES = 3000;         // "DX" distance
+const DX_OPEN = 5;             // DX stations needed to tag a band as open
+
+// ================= Sun & geo math =================
+const rad = d => d * Math.PI / 180, deg = r => r * 180 / Math.PI;
+function subsolar(date) {
+  const jd = date.getTime() / 86400000 + 2440587.5, n = jd - 2451545.0;
+  const L = (280.46 + 0.9856474 * n) % 360, g = rad((357.528 + 0.9856003 * n) % 360);
+  const lambda = rad(L + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g));
+  const eps = rad(23.439 - 0.0000004 * n);
+  const dec = Math.asin(Math.sin(eps) * Math.sin(lambda));
+  const ra = Math.atan2(Math.cos(eps) * Math.sin(lambda), Math.cos(lambda));
+  const gmst = (280.46061837 + 360.98564736629 * n) % 360;
+  let lon = deg(ra) - gmst; lon = ((lon + 540) % 360) - 180;
+  return { lat: deg(dec), lon };
+}
+function sunElevation(lat, lon, sun) {
+  const a = Math.sin(rad(lat)) * Math.sin(rad(sun.lat)) +
+            Math.cos(rad(lat)) * Math.cos(rad(sun.lat)) * Math.cos(rad(lon - sun.lon));
+  return deg(Math.asin(Math.max(-1, Math.min(1, a))));
+}
+function miles(a, b) {
+  const dLat = rad(b.lat - a.lat), dLon = rad(b.lon - a.lon);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLon / 2) ** 2;
+  return 3958.8 * 2 * Math.asin(Math.sqrt(h));
+}
+function gridToLatLon(g) {
+  g = (g || "").trim().toUpperCase();
+  if (!/^[A-R]{2}\d{2}([A-X]{2})?/.test(g)) return null;
+  let lon = (g.charCodeAt(0) - 65) * 20 - 180 + (+g[2]) * 2;
+  let lat = (g.charCodeAt(1) - 65) * 10 - 90 + (+g[3]);
+  if (g.length >= 6) { lon += (g.charCodeAt(4) - 65) / 12 + 1 / 24; lat += (g.charCodeAt(5) - 65) / 24 + 1 / 48; }
+  else { lon += 1; lat += 0.5; }
+  return { lat, lon };
+}
+
+// ================= Map layers (shared) =================
+let geo = null;   // { land, borders, states }
+async function loadGeo() {
+  try {
+    await new Promise((ok, bad) => {
+      const s = document.createElement("script");
+      s.src = "https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js";
+      s.onload = ok; s.onerror = bad; document.head.appendChild(s);
+    });
+    const [world, us] = await Promise.all([
+      fetch("https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-50m.json").then(r => r.json()),
+      fetch("https://cdn.jsdelivr.net/npm/us-atlas@3.0.1/states-10m.json").then(r => r.json()).catch(() => null),
+    ]);
+    geo = {
+      land: topojson.merge(world, world.objects.countries.geometries),
+      borders: topojson.mesh(world, world.objects.countries, (a, b) => a !== b),
+      states: us ? topojson.mesh(us, us.objects.states, (a, b) => a !== b) : null,
+    };
+  } catch (e) { console.warn("Map outlines unavailable", e); }
+  drawGrayMap(); rebuildActBase();
+}
+
+// A "view" is a lon/lat box drawn into a 2:1 canvas.
+const VIEWS = {
+  world: { lon0: -180, lon1: 180, lat0: -90, lat1: 90 },
+  na:    { lon0: -150, lon1: -40, lat0: 8,   lat1: 63 },
+  ne:    { lon0: -88,  lon1: -62, lat0: 34.5, lat1: 47.5 },
+};
+function projector(view, W, H) {
+  const sx = W / (view.lon1 - view.lon0), sy = H / (view.lat1 - view.lat0);
+  return { x: lon => (lon - view.lon0) * sx, y: lat => (view.lat1 - lat) * sy, sx, sy };
+}
+function strokeLines(ctx, P, geom) {
+  const lines = geom.type === "MultiLineString" ? geom.coordinates : [geom.coordinates];
+  ctx.beginPath();
+  for (const line of lines) line.forEach(([lo, la], i) => {
+    if (!i || Math.abs(lo - line[i - 1][0]) > 180) ctx.moveTo(P.x(lo), P.y(la)); else ctx.lineTo(P.x(lo), P.y(la));
+  });
+  ctx.stroke();
+}
+const shade = document.createElement("canvas"); shade.width = 360; shade.height = 180;
+const sctx = shade.getContext("2d");
+
+function drawWorld(canvas, view, opts = {}) {
+  const ctx = canvas.getContext("2d"), W = canvas.width, H = canvas.height, P = projector(view, W, H);
+  const sun = subsolar(new Date());
+  ctx.fillStyle = "#123a57"; ctx.fillRect(0, 0, W, H);
+  const lw = view === VIEWS.world ? 1 : 1.5;
+
+  if (geo) {
+    ctx.fillStyle = "#3f6b4a"; ctx.strokeStyle = "#5d8a66"; ctx.lineWidth = lw;
+    ctx.beginPath();
+    const polys = geo.land.type === "Polygon" ? [geo.land.coordinates] : geo.land.coordinates;
+    for (const poly of polys) for (const ring of poly) ring.forEach(([lo, la], i) => {
+      if (i && Math.abs(lo - ring[i - 1][0]) > 180) ctx.moveTo(P.x(lo), P.y(la));
+      else i ? ctx.lineTo(P.x(lo), P.y(la)) : ctx.moveTo(P.x(lo), P.y(la));
+    });
+    ctx.fill("evenodd"); ctx.stroke();
+    ctx.strokeStyle = "rgba(220,235,220,.35)"; ctx.lineWidth = lw; strokeLines(ctx, P, geo.borders);
+    if (geo.states && view !== VIEWS.world) { ctx.strokeStyle = "rgba(220,235,220,.18)"; strokeLines(ctx, P, geo.states); }
+  }
+
+  ctx.strokeStyle = "rgba(255,255,255,.07)"; ctx.lineWidth = 1;
+  const step = view === VIEWS.ne ? 5 : view === VIEWS.na ? 10 : 30;
+  for (let lo = Math.ceil(view.lon0 / step) * step; lo <= view.lon1; lo += step) { ctx.beginPath(); ctx.moveTo(P.x(lo), 0); ctx.lineTo(P.x(lo), H); ctx.stroke(); }
+  for (let la = Math.ceil(view.lat0 / step) * step; la <= view.lat1; la += step) { ctx.beginPath(); ctx.moveTo(0, P.y(la)); ctx.lineTo(W, P.y(la)); ctx.stroke(); }
+
+  // night + gray line, sampled on a 360x180 grid across the view
+  const nightAlpha = opts.nightAlpha ?? 1;
+  const img = sctx.createImageData(360, 180);
+  const dLon = (view.lon1 - view.lon0) / 360, dLat = (view.lat1 - view.lat0) / 180;
+  for (let y = 0; y < 180; y++) for (let x = 0; x < 360; x++) {
+    const el = sunElevation(view.lat1 - (y + .5) * dLat, view.lon0 + (x + .5) * dLon, sun), i = (y * 360 + x) * 4;
+    if (el < -6) img.data.set([2, 6, 12, Math.round(165 * nightAlpha)], i);
+    else if (el < 0) { const t = (el + 6) / 6; img.data.set([90, 70, 30, Math.round((165 - t * 95) * nightAlpha)], i); }
+    else if (el < 6) img.data.set([200, 166, 75, Math.round((1 - el / 6) * 55 * nightAlpha)], i);
+  }
+  sctx.putImageData(img, 0, 0);
+  ctx.imageSmoothingEnabled = true; ctx.drawImage(shade, 0, 0, W, H);
+  return { ctx, W, H, P, sun };
+}
+function drawHome(ctx, P) {
+  if (HOME.unset) return;
+  ctx.fillStyle = "#ff4fa3"; ctx.strokeStyle = "#fff"; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(P.x(HOME.lon), P.y(HOME.lat), 8, 0, 7); ctx.fill(); ctx.stroke();
+}
+
+function drawGrayMap() {
+  const { ctx, P, sun } = drawWorld(document.getElementById("map"), VIEWS.world);
+  const sx = P.x(sun.lon), sy = P.y(sun.lat);
+  ctx.fillStyle = "rgba(242,179,61,.25)"; ctx.beginPath(); ctx.arc(sx, sy, 26, 0, 7); ctx.fill();
+  ctx.fillStyle = "#f2b33d"; ctx.beginPath(); ctx.arc(sx, sy, 13, 0, 7); ctx.fill();
+  drawHome(ctx, P);
+}
+
+// ================= Clocks =================
+function fmt(tz, opts = {}) {
+  return new Intl.DateTimeFormat([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false, timeZone: tz, ...opts }).format(new Date());
+}
+function drawClocks() {
+  const now = new Date();
+  const day = new Intl.DateTimeFormat([], { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }).format(now);
+  const homeEl = sunElevation(HOME.lat, HOME.lon, subsolar(now));
+  let html = `<div class="clock big"><div class="l">UTC · ${day}</div><div class="t">${fmt("UTC")}</div></div>`;
+  html += `<div class="clock big"><div class="l">Local · ${homeEl > 0 ? "☀️ Daytime" : homeEl > -6 ? "🌅 Gray line" : "🌙 Night"} at your QTH</div><div class="t" style="color:var(--text)">${fmt(undefined, { hour12: true })}</div></div>`;
+  for (const z of ZONES) html += `<div class="clock"><div class="l">${z.label}</div><div class="t">${fmt(z.tz, { second: undefined })}</div></div>`;
+  document.getElementById("clocks").innerHTML = html;
+}
+
+// ================= Solar data (NOAA SWPC) =================
+const S = { sfi: null, kp: null, xray: null };
+async function getJSON(url) { const r = await fetch(url, { cache: "no-store" }); if (!r.ok) throw new Error(r.status); return r.json(); }
+const isFile = location.protocol === "file:";
+
+async function loadSolar() {
+  const base = "https://services.swpc.noaa.gov";
+  const jobs = [
+    getJSON(base + "/json/f107_cm_flux.json").then(d => {
+      const rows = d.filter(r => r.flux != null).sort((a, b) => new Date(a.time_tag) - new Date(b.time_tag));
+      S.sfi = Math.round(+rows[rows.length - 1].flux);
+    }),
+    getJSON(base + "/products/noaa-planetary-k-index.json").then(d => {
+      const last = d[d.length - 1];
+      S.kp = +(Array.isArray(last) ? last[1] : (last.Kp ?? last.kp_index ?? last.kp));
+    }),
+    getJSON(base + "/json/goes/primary/xrays-1-day.json").then(d => {
+      const rows = d.filter(r => r.energy === "0.1-0.8nm" && r.flux > 0);
+      S.xray = rows[rows.length - 1].flux;
+    }),
+  ];
+  const results = await Promise.allSettled(jobs);
+  const failed = results.filter(r => r.status === "rejected").length;
+  renderSolar(); renderBands();
+  if (failed === 3 && isFile) document.getElementById("fileWarn").classList.add("on");
+  document.getElementById("updated").innerHTML = failed
+    ? `<span class="err">Solar data couldn't load (${failed}/3). Retrying in 10 min.</span>`
+    : "Solar data " + new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+function xrayClass(f) {
+  if (f == null) return "–";
+  const c = [["X", 1e-4], ["M", 1e-5], ["C", 1e-6], ["B", 1e-7], ["A", 1e-8]].find(([, t]) => f >= t) || ["A", 1e-8];
+  return c[0] + (f / c[1]).toFixed(1);
+}
+function renderSolar() {
+  const set = (id, v) => document.getElementById(id).textContent = v;
+  set("sfi", S.sfi ?? "–");
+  set("sfiN", S.sfi == null ? "" : S.sfi >= 150 ? "Excellent" : S.sfi >= 120 ? "Good" : S.sfi >= 90 ? "Fair" : "Low");
+  set("kp", S.kp == null ? "–" : S.kp.toFixed(1));
+  set("kpN", S.kp == null ? "" : S.kp < 3 ? "Quiet" : S.kp < 5 ? "Unsettled" : "Storm");
+  set("xray", xrayClass(S.xray));
+  set("xrayN", S.xray == null ? "" : S.xray >= 1e-5 ? "Fade risk" : "Normal");
+}
+
+const BANDS = [
+  { b: "80m", day: 0,   night: 0,   lowBand: true },
+  { b: "40m", day: 0,   night: 0,   lowBand: true },
+  { b: "30m", day: 70,  night: 80 },
+  { b: "20m", day: 80,  night: 120 },
+  { b: "17m", day: 95,  night: 160 },
+  { b: "15m", day: 110, night: 190 },
+  { b: "12m", day: 130, night: 220 },
+  { b: "10m", day: 145, night: 250 },
+];
+function rate(band, isDay) {
+  const sfi = S.sfi ?? 100, kp = S.kp ?? 2;
+  let score;
+  if (band.lowBand) score = isDay ? (band.b === "80m" ? 0 : 1) : 2;
+  else { const need = isDay ? band.day : band.night; score = sfi >= need + 30 ? 2 : sfi >= need ? 1 : 0; }
+  if (kp >= 5) score -= 2; else if (kp >= 4) score -= 1;
+  if (isDay && S.xray >= 1e-5) score -= 1;
+  return ["Poor", "Fair", "Good"][Math.max(0, Math.min(2, score))];
+}
+// Current conditions at home: daytime, night, or gray line (sun within 6° of the horizon),
+// when paths on both sides of the terminator can be open, so the better of the two applies.
+function renderBands() {
+  const el = sunElevation(HOME.lat, HOME.lon, subsolar(new Date()));
+  const phase = el > 6 ? "day" : el < -6 ? "night" : "gray";
+  const order = ["Poor", "Fair", "Good"];
+  const counts = {};
+  if (typeof stations !== "undefined") for (const s of stations.values()) counts[s.band] = (counts[s.band] || 0) + 1;
+  document.getElementById("bandsWhen").textContent =
+    (phase === "day" ? "☀️ Daytime" : phase === "night" ? "🌙 Night" : "🌅 Gray line") + " at your QTH" +
+    (S.sfi != null ? ` · SFI ${S.sfi}` : "") + (S.kp != null ? ` · Kp ${S.kp.toFixed(1)}` : "");
+  document.getElementById("bands").innerHTML = BANDS.map(band => {
+    const r = phase === "day" ? rate(band, true) : phase === "night" ? rate(band, false)
+      : order[Math.max(order.indexOf(rate(band, true)), order.indexOf(rate(band, false)))];
+    const n = counts[band.b] || 0;
+    const rc = { Good: "var(--good)", Fair: "var(--fair)", Poor: "var(--poor)" }[r];
+    return `<div class="btile ${n ? "live" : ""}" style="--rc:${rc}">
+      <div class="bn">${band.b}</div><div class="br">${r}</div>
+      <div class="bs">${n ? n + " on air" : "quiet"}</div></div>`;
+  }).join("");
+}
+
+// ================= Band activity =================
+const BAND_PLAN = [
+  ["160m", 1800, 2000], ["80m", 3500, 4000], ["60m", 5330, 5410], ["40m", 7000, 7300], ["30m", 10100, 10150],
+  ["20m", 14000, 14350], ["17m", 18068, 18168], ["15m", 21000, 21450], ["12m", 24890, 24990], ["10m", 28000, 29700],
+  ["6m", 50000, 54000], ["2m", 144000, 148000], ["1.25m", 222000, 225000], ["70cm", 420000, 450000], ["23cm", 1240000, 1300000],
+];
+const CHIP_BANDS = ["80m", "40m", "30m", "20m", "17m", "15m", "12m", "10m", "6m", "2m", "70cm"];
+const bandOf = khz => (BAND_PLAN.find(([, lo, hi]) => khz >= lo && khz <= hi) || [null])[0];
+
+// FT8 / FT4 watering holes, kHz (each window ~3 kHz wide)
+const FT_WINDOWS = [1840, 3573, 3575.5, 7074, 7047.5, 10136, 10140, 14074, 14080, 18100, 18104, 21074, 21140,
+  24915, 24919, 28074, 28180, 50313, 50318, 144174, 144170, 432174];
+function isFT(freq, mode, comment) {
+  if (/^FT[48]$/i.test(mode || "")) return true;
+  if (/\bFT\s?[48]\b/i.test(comment || "")) return true;
+  return FT_WINDOWS.some(f => freq >= f - 0.3 && freq <= f + 3);
+}
+function guessMode(freq, mode, comment) {
+  if (mode && !/^DIGI$/i.test(mode)) return mode.toUpperCase() === "USB" || mode.toUpperCase() === "LSB" ? "SSB" : mode.toUpperCase();
+  const c = (comment || "").toUpperCase();
+  if (/\bCW\b/.test(c)) return "CW";
+  if (/\bFM\b/.test(c)) return "FM";
+  if (/\b(SSB|USB|LSB)\b/.test(c)) return "SSB";
+  if (mode) return "DIGI";
+  return "";
+}
+
+// Station positions. US stations get looked up by callsign (grid square from the FCC record, via callook.info)
+const US_COUNTRIES = /^(United States|Alaska|Hawaii)$/i;
+const callCache = (() => { try { return JSON.parse(localStorage.getItem("hamdash.calls") || "{}"); } catch { return {}; } })();
+const pendingCalls = new Set();
+function saveCallCache() { try { localStorage.setItem("hamdash.calls", JSON.stringify(callCache)); } catch {} }
+async function lookupUS(call) {
+  const base = call.split("/")[0].toUpperCase();
+  if (base in callCache || pendingCalls.has(base) || pendingCalls.size >= 6) return;
+  pendingCalls.add(base);
+  try {
+    const j = await getJSON("https://callook.info/" + encodeURIComponent(base) + "/json");
+    callCache[base] = j.status === "VALID" && j.location ? (j.location.gridsquare || "").slice(0, 6) : "";
+    saveCallCache();
+  } catch { /* try again next refresh */ }
+  pendingCalls.delete(base);
+}
+function usGrid(call) {
+  const base = call.split("/")[0].toUpperCase();
+  if (call.includes("/")) return "";       // portable: home address isn't where they are
+  return callCache[base];
+}
+
+const stations = new Map();   // key: call|band -> station
+let actOk = null;
+
+function addStation(s) {
+  const key = s.call + "|" + s.band;
+  const prev = stations.get(key);
+  if (prev && prev.t > s.t && !s.exact) return;
+  if (prev && prev.exact && !s.exact && prev.t > s.t - 15 * 60000) return;
+  s.dist = Math.round(miles(HOME, s.loc));
+  stations.set(key, s);
+}
+
+// HamQTH asks for at least 15 s between requests, so the queries take turns every 20 s.
+// Separate low-band and VHF/UHF queries keep busy HF bands from crowding them out.
+const HQ = "https://www.hamqth.com/api/v2/spots?include=locations&limit=200";
+const QUERIES = [
+  HQ + "&fromCont=NA",                                   // anything being heard in North America
+  HQ + "&cont=NA",                                       // North American stations on the air
+  HQ + "&fromCont=NA&bands=160M,80M,60M,40M,30M",        // low bands
+  HQ + "&cont=NA&bands=6M,2M,70CM",                      // VHF / UHF
+];
+const lastResp = [];   // most recent answer to each query
+let qTurn = 0, potaOk = false, hamqthOk = false;
+const usLookups = new Set();
+
+function ingestHamQTH(data) {
+  const locs = {};
+  for (const l of data.locations || []) locs[(l.call || "").toUpperCase()] = l;
+  for (const sp of data.spots || []) {
+    const freq = +sp.freq, band = bandOf(freq);
+    if (!band || isFT(freq, sp.mode, sp.comment)) continue;
+    const call = (sp.dxcall || "").toUpperCase();
+    const t = new Date(sp.time).getTime();
+    if (Date.now() - t > SPOT_WINDOW_MIN * 60000) continue;
+    let loc = null, exact = false;
+    const l = locs[call];
+    if (l && l.source !== "dxcc" && l.lat != null) { loc = { lat: +l.lat, lon: +l.lon }; exact = true; }
+    else if (US_COUNTRIES.test(sp.country || "")) {
+      const g = usGrid(call);
+      if (g === undefined) { usLookups.add(call); continue; }    // look it up, place it shortly
+      if (g) { loc = gridToLatLon(g); exact = true; }
+      else continue;                                             // can't place it honestly
+    } else if (l && l.lat != null) loc = { lat: +l.lat, lon: +l.lon };   // country center
+    if (!loc) continue;
+    addStation({ call, band, freq, mode: guessMode(freq, sp.mode, sp.comment), t, loc, exact,
+      where: sp.country, note: sp.comment || "", by: sp.spotter, src: "DX cluster" });
+  }
+}
+function ingestPOTA(list) {
+  for (const sp of list) {
+    const freq = +sp.frequency, band = bandOf(freq);
+    if (!band || isFT(freq, sp.mode, sp.comments) || sp.invalid || sp.latitude == null) continue;
+    const t = new Date(sp.spotTime + (/Z$/.test(sp.spotTime) ? "" : "Z")).getTime();
+    if (Date.now() - t > SPOT_WINDOW_MIN * 60000) continue;
+    addStation({ call: (sp.activator || "").toUpperCase(), band, freq, mode: guessMode(freq, sp.mode, sp.comments), t,
+      loc: { lat: +sp.latitude, lon: +sp.longitude }, exact: true,
+      where: `${sp.name || sp.reference} (${sp.reference}, ${sp.locationDesc})`, note: sp.comments || "",
+      by: sp.spotter, src: "Parks on the Air" });
+  }
+}
+function pruneAndRender() {
+  const cutoff = Date.now() - SPOT_WINDOW_MIN * 60000;
+  for (const [k, s] of stations) if (s.t < cutoff) stations.delete(k);
+  actOk = hamqthOk || potaOk ? new Date() : (actOk === null ? null : false);
+  renderActivity();
+}
+
+async function pollHamQTH() {
+  const i = qTurn++ % QUERIES.length;
+  try { lastResp[i] = await getJSON(QUERIES[i]); ingestHamQTH(lastResp[i]); hamqthOk = true; }
+  catch (e) { hamqthOk = false; if (isFile) document.getElementById("fileWarn").classList.add("on"); if (!potaOk) actOk = false; }
+  pruneAndRender();
+  resolveUS();
+}
+async function pollPOTA() {
+  try { ingestPOTA(await getJSON("https://api.pota.app/spot/activator")); potaOk = true; }
+  catch (e) { potaOk = false; }
+  pruneAndRender();
+}
+let resolving = false;
+async function resolveUS() {
+  if (resolving || !usLookups.size) return;
+  resolving = true;
+  const todo = [...usLookups].slice(0, 25);
+  for (const c of todo) { usLookups.delete(c); await lookupUS(c); await new Promise(r => setTimeout(r, 300)); }
+  for (const r of lastResp) if (r) ingestHamQTH(r);     // place the newly located stations without refetching
+  resolving = false;
+  pruneAndRender();
+}
+function startActivity() {
+  pollPOTA(); setInterval(pollPOTA, 60000);
+  pollHamQTH(); setInterval(pollHamQTH, 20000);
+}
+
+// ----- view, filters, clustering -----
+let view = "na", bandFilter = "all";
+try { view = localStorage.getItem("hamdash.view") || "na"; bandFilter = localStorage.getItem("hamdash.band") || "all"; } catch {}
+let clusters = [];
+
+function visibleStations() {
+  return [...stations.values()].filter(s => bandFilter === "all" || s.band === bandFilter);
+}
+function renderActivity() {
+  // band chips with counts
+  const counts = {}, dx = {};
+  for (const s of stations.values()) {
+    counts[s.band] = (counts[s.band] || 0) + 1;
+    if (s.dist >= DX_MILES) dx[s.band] = (dx[s.band] || 0) + 1;
+  }
+  const chip = (id, label, n, cls = "") =>
+    `<button data-b="${id}" class="${bandFilter === id ? "on" : ""} ${cls}" aria-pressed="${bandFilter === id}">${label} <b>${n}</b></button>`;
+  document.getElementById("bandChips").innerHTML =
+    chip("all", "All bands", stations.size) +
+    CHIP_BANDS.map(b => chip(b, b, counts[b] || 0, ((dx[b] || 0) >= DX_OPEN ? "dx " : "") + (counts[b] ? "" : "empty"))).join("");
+  document.querySelectorAll("#bandChips button").forEach(b => b.onclick = () => {
+    bandFilter = b.dataset.b; try { localStorage.setItem("hamdash.band", bandFilter); } catch {}
+    renderActivity();
+  });
+  document.querySelectorAll("#viewSeg button").forEach(b => b.classList.toggle("on", b.dataset.v === view));
+
+  renderBands();   // keep the "stations spotted" column in step with the map
+  const st = document.getElementById("actStatus");
+  st.innerHTML = actOk === null ? "Loading spots…"
+    : actOk === false ? `<span class="err">Couldn't reach the spot services. Retrying every minute.</span>`
+    : `Updated ${actOk.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+
+  // group stations that would sit on top of each other at this zoom
+  const v = VIEWS[view], P = projector(v, 1440, 720);
+  clusters = [];
+  const list = visibleStations().sort((a, b) => b.t - a.t);
+  for (const s of list) {
+    let lo = s.loc.lon;
+    if (lo < v.lon0 || lo > v.lon1 || s.loc.lat < v.lat0 || s.loc.lat > v.lat1) continue;
+    const x = P.x(lo), y = P.y(s.loc.lat);
+    const c = clusters.find(c => Math.hypot(c.x - x, c.y - y) < 18);
+    if (c) c.items.push(s); else clusters.push({ x, y, items: [s], seed: Math.random() * 10 });
+  }
+  for (const c of clusters) c.newest = Math.max(...c.items.map(s => s.t));
+}
+
+// ----- animated map -----
+const actCanvas = document.getElementById("actmap"), actCtx = actCanvas.getContext("2d");
+const base = document.createElement("canvas"); base.width = 1440; base.height = 720;
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+function rebuildActBase() {
+  drawWorld(base, VIEWS[view], { nightAlpha: 0.7 });
+}
+function frame(now) {
+  actCtx.drawImage(base, 0, 0);
+  const ctx = actCtx, t = now / 1000;
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  for (const c of clusters) {
+    const ageMin = (Date.now() - c.newest) / 60000;
+    const fresh = Math.max(0.25, 1 - ageMin / SPOT_WINDOW_MIN);     // 1 = just spotted, fades with age
+    const n = c.items.length, coreR = 5 + Math.min(6, Math.sqrt(n) * 2);
+    const period = 2.4 - fresh * 0.8;                             // fresher spots pulse faster
+    const reach = 26 + coreR * 2.2;
+
+    // three expanding wavefronts, staggered like a carrier radiating out
+    for (let k = 0; k < 3; k++) {
+      const p = reduceMotion ? (k + 1) / 3.5 : ((t + c.seed) / period + k / 3) % 1;
+      const r = coreR + p * reach;
+      const a = (1 - p) ** 1.4 * 0.95 * fresh;
+      ctx.strokeStyle = `rgba(255,210,63,${a})`;
+      ctx.lineWidth = 2.6 * (1 - p) + 0.6;
+      ctx.beginPath(); ctx.arc(c.x, c.y, r, 0, 7); ctx.stroke();
+    }
+    // glow + core
+    const g = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, coreR * 3);
+    g.addColorStop(0, `rgba(255,220,90,${0.55 * fresh})`); g.addColorStop(1, "rgba(255,210,63,0)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(c.x, c.y, coreR * 3, 0, 7); ctx.fill();
+    const breathe = reduceMotion ? 1 : 1 + 0.12 * Math.sin((t + c.seed) * 2 * Math.PI / period);
+    ctx.fillStyle = `rgba(255,214,70,${0.55 + 0.45 * fresh})`;
+    ctx.beginPath(); ctx.arc(c.x, c.y, coreR * breathe, 0, 7); ctx.fill();
+    ctx.fillStyle = `rgba(255,250,220,${0.8 * fresh})`;
+    ctx.beginPath(); ctx.arc(c.x, c.y, coreR * 0.4, 0, 7); ctx.fill();
+  }
+  ctx.restore();
+  // station counts on clusters
+  ctx.font = "700 15px ui-monospace, Menlo, Consolas, monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for (const c of clusters) if (c.items.length > 1) {
+    ctx.fillStyle = "#0b1117"; ctx.fillText(c.items.length, c.x, c.y + 0.5);
+  }
+  drawHome(ctx, projector(VIEWS[view], 1440, 720));   // home stays on top of nearby activity
+  if (!clusters.length && actOk) {
+    ctx.fillStyle = "rgba(11,17,23,.75)"; ctx.fillRect(470, 330, 500, 60);
+    ctx.fillStyle = "#c5d1dc"; ctx.font = "600 20px -apple-system, Segoe UI, sans-serif";
+    ctx.fillText(bandFilter === "all" ? "No stations spotted in this area right now" : `No ${bandFilter} activity spotted here right now`, 720, 360);
+  }
+  requestAnimationFrame(frame);
+}
+
+// ----- tooltip -----
+const tip = document.getElementById("tip");
+function showTip(ev) {
+  const r = actCanvas.getBoundingClientRect();
+  const sx = actCanvas.width / r.width, x = (ev.clientX - r.left) * sx, y = (ev.clientY - r.top) * sx;
+  const c = clusters.filter(c => Math.hypot(c.x - x, c.y - y) < 22).sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y))[0];
+  if (!c) { tip.style.display = "none"; return; }
+  const ago = s => { const m = Math.round((Date.now() - s.t) / 60000); return m < 1 ? "now" : m + " min ago"; };
+  const items = c.items.slice(0, 6);
+  tip.innerHTML = items.map(s => `
+    <div class="row"><span class="call">${esc(s.call)}</span><span class="mono">${s.band} · ${(s.freq / 1000).toFixed(3)} MHz</span></div>
+    <div class="where">${esc(s.where || "")}${s.mode ? " · " + s.mode : ""} · ${s.dist.toLocaleString()} mi · ${ago(s)}${s.src === "Parks on the Air" ? " · POTA" : ""}</div>`).join("")
+    + (c.items.length > 6 ? `<div class="where">+ ${c.items.length - 6} more</div>` : "");
+  tip.style.display = "block";
+  const wrap = actCanvas.parentElement.getBoundingClientRect();
+  let left = ev.clientX - wrap.left + 14, top = ev.clientY - wrap.top + 14;
+  if (left + tip.offsetWidth > wrap.width) left = ev.clientX - wrap.left - tip.offsetWidth - 14;
+  if (left < 0) left = 4;
+  if (top + tip.offsetHeight > wrap.height) top = Math.max(4, ev.clientY - wrap.top - tip.offsetHeight - 14);
+  tip.style.left = left + "px"; tip.style.top = top + "px";
+}
+actCanvas.addEventListener("pointermove", showTip);
+actCanvas.addEventListener("pointerdown", showTip);
+actCanvas.addEventListener("pointerleave", () => tip.style.display = "none");
+function esc(t) { return String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+document.querySelectorAll("#viewSeg button").forEach(b => b.onclick = () => {
+  view = b.dataset.v; try { localStorage.setItem("hamdash.view", view); } catch {}
+  rebuildActBase(); renderActivity();
+});
+
+// ================= Home location setup =================
+function latLonToGrid(lat, lon) {
+  lon += 180; lat += 90;
+  const A = "ABCDEFGHIJKLMNOPQRSTUVWX";
+  return A[Math.floor(lon / 20)] + A[Math.floor(lat / 10)] +
+    Math.floor((lon % 20) / 2) + Math.floor(lat % 10) +
+    A[Math.floor((lon % 2) * 12)].toLowerCase() + A[Math.floor((lat % 1) * 24)].toLowerCase();
+}
+const setupEl = document.getElementById("homeSetup"), gridIn = document.getElementById("homeGrid"), homeErr = document.getElementById("homeErr");
+function openSetup(canCancel) {
+  setupEl.hidden = false; homeErr.textContent = "";
+  gridIn.value = HOME.unset ? "" : HOME.grid;
+  document.getElementById("homeCancel").hidden = !canCancel;
+  gridIn.focus();
+}
+function saveHome(grid) {
+  grid = grid.trim();
+  if (!/^[A-Ra-r]{2}\d{2}([A-Xa-x]{2})?$/.test(grid)) { homeErr.textContent = "That doesn't look like a grid square. Use 4 or 6 characters, like FN20 or FN20xr."; return; }
+  applyHome(grid);
+  try { localStorage.setItem("hamdash.home", HOME.grid); } catch {}
+  setupEl.hidden = true;
+  for (const s of stations.values()) s.dist = Math.round(miles(HOME, s.loc));
+  drawGrayMap(); rebuildActBase(); drawClocks(); renderActivity();
+}
+document.getElementById("homeForm").onsubmit = e => { e.preventDefault(); saveHome(gridIn.value); };
+document.getElementById("homeEdit").onclick = () => openSetup(true);
+document.getElementById("homeCancel").onclick = () => { setupEl.hidden = true; };
+document.getElementById("homeGeo").onclick = () => {
+  if (!navigator.geolocation) { homeErr.textContent = "This browser can't share your location. Type your grid square instead."; return; }
+  homeErr.textContent = "Finding your location…";
+  navigator.geolocation.getCurrentPosition(
+    pos => { gridIn.value = latLonToGrid(pos.coords.latitude, pos.coords.longitude); homeErr.textContent = ""; saveHome(gridIn.value); },
+    () => { homeErr.textContent = "Couldn't get your location. Type your grid square instead."; },
+    { timeout: 10000 });
+};
+(() => {
+  let saved = null;
+  try { saved = localStorage.getItem("hamdash.home"); } catch {}
+  if (!saved || !applyHome(saved)) openSetup(false);
+})();
+
+// ================= Start =================
+drawClocks(); renderSolar(); renderBands(); drawGrayMap(); rebuildActBase(); renderActivity();
+requestAnimationFrame(frame);
+setInterval(drawClocks, 1000);
+setInterval(() => { drawGrayMap(); rebuildActBase(); renderBands(); renderActivity(); }, 60000);
+loadGeo();
+loadSolar(); setInterval(loadSolar, 10 * 60000);
+startActivity();
+</script>
+</body>
+</html>
