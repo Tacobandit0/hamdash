@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="HamDash">
@@ -14,6 +14,8 @@
     --accent: #f2b33d; --good: #3ecf7a; --fair: #e8c547; --poor: #e5604f; --spot: #ffd23f;
   }
   * { box-sizing: border-box; }
+  html { touch-action: pan-x pan-y; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  html, body { touch-action: pan-x pan-y; -webkit-text-size-adjust: 100%; }
   body { margin: 0; background: var(--bg); color: var(--text);
     font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     padding: env(safe-area-inset-top) max(12px, env(safe-area-inset-right)) 24px max(12px, env(safe-area-inset-left)); }
@@ -824,7 +826,6 @@ function renderTapInfo() {
   document.getElementById("tiClose").onclick = () => { selectedKey = null; renderTapInfo(); };
 }
 function onTap(ev) {
-  if (dragged) { dragged = false; return; }
   const c = clusterAt(ev);
   const already = c && c === selectedCluster();
   selectedKey = c && !already ? keyOf(c.items[0]) : null;
@@ -837,7 +838,6 @@ function onTap(ev) {
 }
 actCanvas.addEventListener("pointermove", showTip);
 actCanvas.addEventListener("pointerleave", ev => { if (ev.pointerType === "mouse") tip.style.display = "none"; });
-actCanvas.addEventListener("click", onTap);
 function esc(t) { return String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 
 document.querySelectorAll("#viewSeg button").forEach(b => b.onclick = () => {
@@ -845,6 +845,19 @@ document.querySelectorAll("#viewSeg button").forEach(b => b.onclick = () => {
   try { localStorage.setItem("hamdash.view", view); } catch {}
   rebuildActBase(); renderActivity();
 });
+
+// ----- iPhone: keep Safari from zooming the whole app -----
+// Safari ignores the zoom settings above in some cases, so its pinch gestures are cancelled here.
+// On the map, the touches still reach the map's own pinch and drag handling below.
+for (const type of ["gesturestart", "gesturechange", "gestureend"])
+  document.addEventListener(type, e => e.preventDefault(), { passive: false });
+document.addEventListener("touchmove", e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+let lastTouchEnd = 0;
+document.addEventListener("touchend", e => {            // no double-tap zoom
+  const now = Date.now();
+  if (now - lastTouchEnd < 300 && e.target.closest && !e.target.closest("button, input, a, select")) e.preventDefault();
+  lastTouchEnd = now;
+}, { passive: false });
 
 // ----- pinch to zoom, drag to move (touch); scroll wheel and click-drag (mouse) -----
 const MIN_SPAN = 4, MAX_SPAN = 360;     // degrees of longitude across the map
@@ -874,11 +887,12 @@ function zoomAround(clientX, clientY, factor) {   // factor < 1 zooms in
   setView(g.lon - fx * ns, g.lat + fy * ns / 2, ns);
 }
 const pointers = new Map();
-let gesture = null, dragged = false;
+let gesture = null, dragged = false, multi = false;
 actCanvas.addEventListener("pointerdown", ev => {
+  if (ev.pointerType === "touch") return;          // touches are handled by the touch events below
   actCanvas.setPointerCapture(ev.pointerId);
   pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
-  if (pointers.size === 1) { dragged = false; }
+  if (pointers.size === 1) { dragged = false; multi = false; } else multi = true;
   startGesture();
 });
 function startGesture() {
@@ -891,8 +905,11 @@ function startGesture() {
   }
 }
 actCanvas.addEventListener("pointermove", ev => {
-  if (!pointers.has(ev.pointerId) || !gesture) return;
+  if (ev.pointerType === "touch" || !pointers.has(ev.pointerId) || !gesture) return;
   pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+  moveGesture();
+});
+function moveGesture() {
   const pts = [...pointers.values()], r = actCanvas.getBoundingClientRect();
   if (gesture.type === "pan" && pts.length === 1) {
     const dx = pts[0].x - gesture.x, dy = pts[0].y - gesture.y;
@@ -907,13 +924,43 @@ actCanvas.addEventListener("pointermove", ev => {
     const fx = (mx - r.left) / r.width, fy = (my - r.top) / r.height;   // keep the pinched spot under the fingers
     setView(gesture.anchor.lon - fx * ns, gesture.anchor.lat + fy * ns / 2, ns);
   }
-});
+}
 function endPointer(ev) {
+  if (ev.pointerType === "touch") return;
+  const wasTap = ev.type === "pointerup" && pointers.size === 1 && !dragged && !multi;
   pointers.delete(ev.pointerId);
+  if (wasTap) onTap(ev);              // a quick tap or click (not a drag or pinch) opens a dot's info
   if (pointers.size) startGesture(); else gesture = null;
 }
 actCanvas.addEventListener("pointerup", endPointer);
 actCanvas.addEventListener("pointercancel", endPointer);
+
+// iPhone / touchscreens: the map owns every touch that starts on it, so Safari never scrolls or zooms the page from here.
+function syncTouches(e) {
+  pointers.clear();
+  for (const t of e.touches) pointers.set("t" + t.identifier, { x: t.clientX, y: t.clientY });
+}
+actCanvas.addEventListener("touchstart", e => {
+  e.preventDefault();
+  if (e.touches.length === 1) { dragged = false; multi = false; } else multi = true;
+  syncTouches(e); startGesture();
+}, { passive: false });
+actCanvas.addEventListener("touchmove", e => {
+  e.preventDefault();
+  if (!gesture) return;
+  syncTouches(e); moveGesture();
+}, { passive: false });
+function endTouch(e) {
+  e.preventDefault();
+  const t = e.changedTouches[0];
+  const wasTap = e.type === "touchend" && e.touches.length === 0 && !dragged && !multi;
+  syncTouches(e);
+  if (pointers.size) startGesture(); else gesture = null;     // lifting one finger of a pinch continues as a drag
+  if (wasTap && t) onTap({ clientX: t.clientX, clientY: t.clientY, pointerType: "touch" });
+}
+actCanvas.addEventListener("touchend", endTouch, { passive: false });
+actCanvas.addEventListener("touchcancel", endTouch, { passive: false });
+
 actCanvas.addEventListener("wheel", ev => {
   ev.preventDefault();
   zoomAround(ev.clientX, ev.clientY, Math.pow(1.0015, ev.deltaY));
