@@ -124,7 +124,8 @@
   .chips button.dx::after { content: "DX"; font-size: 10px; background: var(--good); color: #0b1117; border-radius: 4px; padding: 1px 4px; }
   .chips button.empty b { color: var(--muted); font-weight: 600; }
   .mapwrap { position: relative; }
-  #actmap { cursor: crosshair; }
+  #actmap { cursor: grab; touch-action: none; }
+  #actmap:active { cursor: grabbing; }
   .tapinfo { margin-top: 8px; background: var(--inset); border: 1px solid var(--spot); border-radius: 10px; padding: 10px 12px; font-size: 15px; }
   .tapinfo[hidden] { display: none; }
   .tapinfo .tihead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; color: var(--muted); font-size: 13px; }
@@ -253,7 +254,7 @@
     <div class="legend">
       <span><i style="background:var(--spot);box-shadow:0 0 6px var(--spot)"></i>Station on the air (brighter = more recent)</span>
       <span><i style="background:#ff4fa3"></i>Home</span>
-      <span>Hover or tap a dot for details</span>
+      <span>Tap a dot for details · pinch or scroll to zoom, drag to move</span>
       <span class="actstatus" id="actStatus">Loading spots…</span>
     </div>
     <div class="note">Shows stations spotted in the last 30 minutes on the HamQTH DX cluster (heard in or operating from North America) and Parks on the Air. FT8 and FT4 are left out. A band gets a green <b>DX</b> tag when 5 or more stations over 3,000 miles away are being heard. Refreshes every minute.</div>
@@ -361,7 +362,7 @@ function drawWorld(canvas, view, opts = {}) {
   const ctx = canvas.getContext("2d"), W = canvas.width, H = canvas.height, P = projector(view, W, H);
   const sun = subsolar(new Date());
   ctx.fillStyle = "#123a57"; ctx.fillRect(0, 0, W, H);
-  const lw = view === VIEWS.world ? 1 : 1.5;
+  const span = view.lon1 - view.lon0, lw = span >= 300 ? 1 : 1.5;
 
   if (geo) {
     ctx.fillStyle = "#3f6b4a"; ctx.strokeStyle = "#5d8a66"; ctx.lineWidth = lw;
@@ -373,11 +374,11 @@ function drawWorld(canvas, view, opts = {}) {
     });
     ctx.fill("evenodd"); ctx.stroke();
     ctx.strokeStyle = "rgba(220,235,220,.35)"; ctx.lineWidth = lw; strokeLines(ctx, P, geo.borders);
-    if (geo.states && view !== VIEWS.world) { ctx.strokeStyle = "rgba(220,235,220,.18)"; strokeLines(ctx, P, geo.states); }
+    if (geo.states && span < 200) { ctx.strokeStyle = "rgba(220,235,220,.18)"; strokeLines(ctx, P, geo.states); }
   }
 
   ctx.strokeStyle = "rgba(255,255,255,.07)"; ctx.lineWidth = 1;
-  const step = view === VIEWS.ne ? 5 : view === VIEWS.na ? 10 : 30;
+  const step = span <= 40 ? 5 : span <= 150 ? 10 : 30;
   for (let lo = Math.ceil(view.lon0 / step) * step; lo <= view.lon1; lo += step) { ctx.beginPath(); ctx.moveTo(P.x(lo), 0); ctx.lineTo(P.x(lo), H); ctx.stroke(); }
   for (let la = Math.ceil(view.lat0 / step) * step; la <= view.lat1; la += step) { ctx.beginPath(); ctx.moveTo(0, P.y(la)); ctx.lineTo(W, P.y(la)); ctx.stroke(); }
 
@@ -654,6 +655,9 @@ function startActivity() {
 // ----- view, filters, clustering -----
 let view = "na", bandFilter = "all";
 try { view = localStorage.getItem("hamdash.view") || "na"; bandFilter = localStorage.getItem("hamdash.band") || "all"; } catch {}
+// V is the box the activity map shows right now; presets set it, pinch/drag/scroll change it
+let V = { ...(VIEWS[view] || VIEWS.na) };
+try { const saved = JSON.parse(localStorage.getItem("hamdash.mapbox") || "null"); if (view === "custom" && saved) V = saved; } catch {}
 let clusters = [];
 
 function visibleStations() {
@@ -684,7 +688,10 @@ function renderActivity() {
     : `Updated ${actOk.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
 
   // group stations that would sit on top of each other at this zoom
-  const v = VIEWS[view], P = projector(v, 1440, 720);
+  reCluster();
+}
+function reCluster() {
+  const v = V, P = projector(v, 1440, 720);
   clusters = [];
   const list = visibleStations().sort((a, b) => b.t - a.t);
   for (const s of list) {
@@ -702,11 +709,18 @@ function renderActivity() {
 const actCanvas = document.getElementById("actmap"), actCtx = actCanvas.getContext("2d");
 const base = document.createElement("canvas"); base.width = 1440; base.height = 720;
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let baseView = null;      // the box the cached background was drawn for
 function rebuildActBase() {
-  drawWorld(base, VIEWS[view], { nightAlpha: 0.7 });
+  drawWorld(base, V, { nightAlpha: 0.7 });
+  baseView = { ...V };
 }
 function frame(now) {
-  actCtx.drawImage(base, 0, 0);
+  if (baseView && (baseView.lon0 !== V.lon0 || baseView.lat1 !== V.lat1 || baseView.lon1 !== V.lon1)) {
+    // mid-gesture: stretch the last background to the new box until it's redrawn sharp
+    const k = (baseView.lon1 - baseView.lon0) / (V.lon1 - V.lon0), P = projector(V, 1440, 720);
+    actCtx.fillStyle = "#123a57"; actCtx.fillRect(0, 0, 1440, 720);
+    actCtx.drawImage(base, P.x(baseView.lon0), P.y(baseView.lat1), 1440 * k, 720 * k);
+  } else actCtx.drawImage(base, 0, 0);
   const ctx = actCtx, t = now / 1000;
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
@@ -747,7 +761,7 @@ function frame(now) {
   for (const c of clusters) if (c.items.length > 1) {
     ctx.fillStyle = "#0b1117"; ctx.fillText(c.items.length, c.x, c.y + 0.5);
   }
-  drawHome(ctx, projector(VIEWS[view], 1440, 720));   // home stays on top of nearby activity
+  drawHome(ctx, projector(V, 1440, 720));   // home stays on top of nearby activity
   if (!clusters.length && actOk) {
     ctx.fillStyle = "rgba(11,17,23,.75)"; ctx.fillRect(470, 330, 500, 60);
     ctx.fillStyle = "#c5d1dc"; ctx.font = "600 20px -apple-system, Segoe UI, sans-serif";
@@ -775,7 +789,7 @@ function selectedCluster() {
 
 // Mouse hover bubble (desktop)
 function showTip(ev) {
-  if (ev.pointerType !== "mouse") return;
+  if (ev.pointerType !== "mouse" || pointers.size) return;
   const c = clusterAt(ev);
   if (!c) { tip.style.display = "none"; return; }
   const items = c.items.slice(0, 6);
@@ -810,6 +824,7 @@ function renderTapInfo() {
   document.getElementById("tiClose").onclick = () => { selectedKey = null; renderTapInfo(); };
 }
 function onTap(ev) {
+  if (dragged) { dragged = false; return; }
   const c = clusterAt(ev);
   const already = c && c === selectedCluster();
   selectedKey = c && !already ? keyOf(c.items[0]) : null;
@@ -826,9 +841,83 @@ actCanvas.addEventListener("click", onTap);
 function esc(t) { return String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 
 document.querySelectorAll("#viewSeg button").forEach(b => b.onclick = () => {
-  view = b.dataset.v; try { localStorage.setItem("hamdash.view", view); } catch {}
+  view = b.dataset.v; V = { ...VIEWS[view] };
+  try { localStorage.setItem("hamdash.view", view); } catch {}
   rebuildActBase(); renderActivity();
 });
+
+// ----- pinch to zoom, drag to move (touch); scroll wheel and click-drag (mouse) -----
+const MIN_SPAN = 4, MAX_SPAN = 360;     // degrees of longitude across the map
+function setView(lon0, lat1, span) {
+  span = Math.max(MIN_SPAN, Math.min(MAX_SPAN, span));
+  const latSpan = span / 2;
+  lon0 = Math.max(-180, Math.min(180 - span, lon0));
+  lat1 = Math.max(-90 + latSpan, Math.min(90, lat1));
+  V = { lon0, lon1: lon0 + span, lat0: lat1 - latSpan, lat1 };
+  view = "custom";
+  document.querySelectorAll("#viewSeg button").forEach(b => b.classList.remove("on"));
+  reCluster();
+  clearTimeout(setView.t);
+  setView.t = setTimeout(() => {           // redraw the background sharp once movement settles
+    rebuildActBase();
+    try { localStorage.setItem("hamdash.view", "custom"); localStorage.setItem("hamdash.mapbox", JSON.stringify(V)); } catch {}
+  }, 150);
+}
+function geoAt(clientX, clientY) {         // map position under a point on screen
+  const r = actCanvas.getBoundingClientRect(), span = V.lon1 - V.lon0;
+  return { lon: V.lon0 + (clientX - r.left) / r.width * span, lat: V.lat1 - (clientY - r.top) / r.height * (span / 2), r };
+}
+function zoomAround(clientX, clientY, factor) {   // factor < 1 zooms in
+  const g = geoAt(clientX, clientY), span = V.lon1 - V.lon0;
+  const ns = Math.max(MIN_SPAN, Math.min(MAX_SPAN, span * factor));
+  const fx = (clientX - g.r.left) / g.r.width, fy = (clientY - g.r.top) / g.r.height;
+  setView(g.lon - fx * ns, g.lat + fy * ns / 2, ns);
+}
+const pointers = new Map();
+let gesture = null, dragged = false;
+actCanvas.addEventListener("pointerdown", ev => {
+  actCanvas.setPointerCapture(ev.pointerId);
+  pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+  if (pointers.size === 1) { dragged = false; }
+  startGesture();
+});
+function startGesture() {
+  const pts = [...pointers.values()];
+  const span = V.lon1 - V.lon0;
+  if (pts.length === 1) gesture = { type: "pan", x: pts[0].x, y: pts[0].y, lon0: V.lon0, lat1: V.lat1, span };
+  else if (pts.length >= 2) {
+    const [a, b] = pts, mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    gesture = { type: "pinch", dist: Math.hypot(a.x - b.x, a.y - b.y) || 1, anchor: geoAt(mx, my), span };
+  }
+}
+actCanvas.addEventListener("pointermove", ev => {
+  if (!pointers.has(ev.pointerId) || !gesture) return;
+  pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+  const pts = [...pointers.values()], r = actCanvas.getBoundingClientRect();
+  if (gesture.type === "pan" && pts.length === 1) {
+    const dx = pts[0].x - gesture.x, dy = pts[0].y - gesture.y;
+    if (!dragged && Math.hypot(dx, dy) < 6) return;       // small wiggles still count as a tap
+    dragged = true; tip.style.display = "none";
+    const degPerPx = gesture.span / r.width;
+    setView(gesture.lon0 - dx * degPerPx, gesture.lat1 + dy * degPerPx, gesture.span);
+  } else if (gesture.type === "pinch" && pts.length >= 2) {
+    dragged = true;
+    const [a, b] = pts, mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    const ns = Math.max(MIN_SPAN, Math.min(MAX_SPAN, gesture.span * gesture.dist / (Math.hypot(a.x - b.x, a.y - b.y) || 1)));
+    const fx = (mx - r.left) / r.width, fy = (my - r.top) / r.height;   // keep the pinched spot under the fingers
+    setView(gesture.anchor.lon - fx * ns, gesture.anchor.lat + fy * ns / 2, ns);
+  }
+});
+function endPointer(ev) {
+  pointers.delete(ev.pointerId);
+  if (pointers.size) startGesture(); else gesture = null;
+}
+actCanvas.addEventListener("pointerup", endPointer);
+actCanvas.addEventListener("pointercancel", endPointer);
+actCanvas.addEventListener("wheel", ev => {
+  ev.preventDefault();
+  zoomAround(ev.clientX, ev.clientY, Math.pow(1.0015, ev.deltaY));
+}, { passive: false });
 
 // ================= Home location setup =================
 function latLonToGrid(lat, lon) {
