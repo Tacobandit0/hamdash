@@ -19,6 +19,23 @@
     padding: env(safe-area-inset-top) max(12px, env(safe-area-inset-right)) 24px max(12px, env(safe-area-inset-left)); }
   header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap;
     padding: 12px 4px; max-width: 1200px; margin: 0 auto; }
+  .hright { display: flex; align-items: center; gap: 12px; }
+  @media (max-width: 600px) {
+    header { display: grid; grid-template-columns: 1fr auto; align-items: center; row-gap: 4px; }
+    .hright { display: contents; }
+    .hright #updated { grid-column: 1 / -1; grid-row: 2; }
+    .hright .sharebtn { grid-column: 2; grid-row: 1; }
+  }
+  .sharebtn { display: inline-flex; align-items: center; gap: 6px; background: var(--panel); color: var(--text);
+    border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font: 600 13px inherit; font-family: inherit; cursor: pointer; }
+  .sharebtn:hover { border-color: var(--accent); }
+  .sharebtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .sharebtn.done { border-color: var(--good); color: var(--good); }
+  .sharebox { max-width: 1200px; margin: 0 auto 12px; background: var(--panel); border: 1px solid var(--accent); border-radius: 10px;
+    padding: 10px 14px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 14px; }
+  .sharebox[hidden] { display: none; }
+  .sharebox input { flex: 1; min-width: 220px; background: var(--inset); color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 7px 10px; font: 14px ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
   h1 { margin: 0; font-size: 20px; letter-spacing: .5px; }
   h1 span { color: var(--accent); }
   .sub { color: var(--muted); font-size: 13px; }
@@ -77,6 +94,18 @@
   .setupform button[hidden] { display: none; }
   #homeErr:empty { display: none; }
   .linkbtn { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; font-size: 12px; cursor: pointer; text-decoration: underline; }
+  .wxrow { display: flex; align-items: center; gap: 12px 20px; flex-wrap: wrap; }
+  .wxnow { display: flex; align-items: center; gap: 10px; min-width: 150px; }
+  .wxicon { font-size: 32px; line-height: 1; width: 40px; text-align: center; }
+  .wxtemp { font: 600 28px/1.1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  .wxgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; flex: 2 1 380px; }
+  .wxgrid div { background: var(--inset); border-radius: 8px; padding: 6px 8px; display: flex; flex-direction: column; font-variant-numeric: tabular-nums; }
+  .wxgrid .l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  .wxside { flex: 1 1 200px; font-size: 14px; }
+  @media (max-width: 600px) { .wxgrid { grid-template-columns: 1fr 1fr; } }
+  .wxalert { background: #3a1512; border: 1px solid var(--poor); color: #ffd7d1; border-radius: 8px; padding: 8px 10px; font-size: 13px; margin-bottom: 10px; }
+  .wxalert[hidden] { display: none; }
+  .wxalert b { color: #fff; }
   .warn { display: none; max-width: 1200px; margin: 0 auto 12px; background: #2a1714; border: 1px solid var(--poor);
     border-radius: 10px; padding: 10px 14px; font-size: 14px; }
   .warn.on { display: block; }
@@ -108,8 +137,19 @@
 <body>
 <header>
   <h1>Ham<span>Dash</span></h1>
-  <div class="sub" id="updated">Loading…</div>
+  <div class="hright">
+    <div class="sub" id="updated">Loading…</div>
+    <button class="sharebtn" id="shareBtn" aria-label="Share HamDash with friends">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span id="shareLbl">Share</span>
+    </button>
+  </div>
 </header>
+<div class="sharebox" id="shareBox" hidden>
+  <span>Copy this link to share HamDash:</span>
+  <input id="shareUrl" readonly aria-label="HamDash link">
+  <button class="linkbtn" id="shareClose">Done</button>
+</div>
 
 <div class="setup" id="homeSetup" hidden>
   <div>
@@ -152,6 +192,26 @@
       <div class="stat"><div class="l">Solar flux</div><div class="v" id="sfi">–</div><div class="n" id="sfiN"></div></div>
       <div class="stat"><div class="l">Kp index</div><div class="v" id="kp">–</div><div class="n" id="kpN"></div></div>
       <div class="stat"><div class="l">X-ray</div><div class="v" id="xray">–</div><div class="n" id="xrayN"></div></div>
+    </div>
+  </section>
+
+  <section class="panel full wxbar">
+    <div class="wxalert" id="wxAlert" hidden></div>
+    <div class="wxrow">
+      <div class="wxnow">
+        <div class="wxicon" id="wxIcon" aria-hidden="true">–</div>
+        <div><div class="wxtemp" id="wxTemp">–</div><div class="sub" id="wxText">Loading weather…</div></div>
+      </div>
+      <div class="wxgrid">
+        <div><span class="l">Wind</span><span id="wxWind">–</span></div>
+        <div><span class="l">Humidity</span><span id="wxRh">–</span></div>
+        <div><span class="l">Pressure</span><span id="wxPress">–</span></div>
+        <div><span class="l">Dew point</span><span id="wxDew">–</span></div>
+      </div>
+      <div class="wxside">
+        <div class="wxfc" id="wxFc"></div>
+        <div class="sub" id="wxWhere"></div>
+      </div>
     </div>
   </section>
 
@@ -731,7 +791,7 @@ function saveHome(grid) {
   try { localStorage.setItem("hamdash.home", HOME.grid); } catch {}
   setupEl.hidden = true;
   for (const s of stations.values()) s.dist = Math.round(miles(HOME, s.loc));
-  drawGrayMap(); rebuildActBase(); drawClocks(); renderActivity();
+  drawGrayMap(); rebuildActBase(); drawClocks(); renderActivity(); loadWeather();
 }
 document.getElementById("homeForm").onsubmit = e => { e.preventDefault(); saveHome(gridIn.value); };
 document.getElementById("homeEdit").onclick = () => openSetup(true);
@@ -750,6 +810,104 @@ document.getElementById("homeGeo").onclick = () => {
   if (!saved || !applyHome(saved)) openSetup(false);
 })();
 
+// ================= Weather (NOAA National Weather Service) =================
+const NWS = "https://api.weather.gov";
+const wxSet = (id, v) => document.getElementById(id).textContent = v;
+let wxPoint = null;   // cached lookup for the current grid square
+const C2F = c => Math.round(c * 9 / 5 + 32);
+const compass = d => ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"][Math.round(d / 22.5) % 16];
+function wxEmoji(text, isDay) {
+  const t = (text || "").toLowerCase();
+  if (/thunder|t-storm/.test(t)) return "⛈️";
+  if (/snow|sleet|ice|flurr/.test(t)) return "🌨️";
+  if (/rain|drizzle|shower/.test(t)) return "🌧️";
+  if (/fog|mist|haze|smoke/.test(t)) return "🌫️";
+  if (/overcast|cloudy/.test(t) && !/partly|mostly clear|mostly sunny/.test(t)) return "☁️";
+  if (/partly|mostly|few|scattered/.test(t)) return isDay ? "⛅" : "☁️";
+  if (/wind|breez/.test(t)) return "💨";
+  return isDay ? "☀️" : "🌙";
+}
+async function loadWeather() {
+  if (HOME.unset) { wxSet("wxText", "Set your grid square to see weather"); return; }
+  const key = HOME.lat.toFixed(4) + "," + HOME.lon.toFixed(4);
+  try {
+    if (!wxPoint || wxPoint.key !== key) {
+      const pt = await getJSON(`${NWS}/points/${key}`);
+      const st = await getJSON(pt.properties.observationStations);
+      const rl = pt.properties.relativeLocation?.properties || {};
+      wxPoint = { key, forecast: pt.properties.forecast, where: rl.city ? `${rl.city}, ${rl.state}` : "",
+        stations: st.features.slice(0, 3).map(f => ({ id: f.properties.stationIdentifier, name: f.properties.name })) };
+    }
+    // latest observation; skip a station whose report is missing the temperature
+    let obs = null, station = null;
+    for (const s of wxPoint.stations) {
+      try {
+        const o = (await getJSON(`${NWS}/stations/${s.id}/observations/latest`)).properties;
+        if (o && o.temperature && o.temperature.value != null) { obs = o; station = s; break; }
+      } catch {}
+    }
+    const isDay = sunElevation(HOME.lat, HOME.lon, subsolar(new Date())) > 0;
+    if (obs) {
+      const v = q => q && q.value != null ? q.value : null;
+      const tC = v(obs.temperature), dC = v(obs.dewpoint), w = v(obs.windSpeed), g = v(obs.windGust), dir = v(obs.windDirection);
+      const rh = v(obs.relativeHumidity), pa = v(obs.barometricPressure) ?? v(obs.seaLevelPressure);
+      wxSet("wxTemp", C2F(tC) + "°F");
+      wxSet("wxText", obs.textDescription || "");
+      wxSet("wxIcon", wxEmoji(obs.textDescription, isDay));
+      const mph = w == null ? null : Math.round(w * 0.621371);
+      wxSet("wxWind", mph == null ? "–" : mph === 0 ? "Calm" : `${dir != null ? compass(dir) + " " : ""}${mph} mph${g ? `, gusts ${Math.round(g * 0.621371)}` : ""}`);
+      wxSet("wxRh", rh == null ? "–" : Math.round(rh) + "%");
+      wxSet("wxPress", pa == null ? "–" : (pa / 3386.39).toFixed(2) + " inHg");
+      wxSet("wxDew", dC == null ? "–" : C2F(dC) + "°F");
+      const t = new Date(obs.timestamp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+      wxSet("wxWhere", `${wxPoint.where || station.name} · ${station.id} ${t}`);
+    } else {
+      wxSet("wxText", "No recent report from nearby stations");
+    }
+    // forecast for the next period
+    try {
+      const fc = await getJSON(wxPoint.forecast);
+      const p = fc.properties.periods[0];
+      wxSet("wxFc", `${p.name}: ${p.shortForecast}, ${p.isDaytime ? "high" : "low"} ${p.temperature}°${p.temperatureUnit}`);
+    } catch { wxSet("wxFc", ""); }
+    // active alerts; thunderstorms get an antenna reminder
+    try {
+      const al = await getJSON(`${NWS}/alerts/active?point=${key}`);
+      const events = [...new Set(al.features.map(f => f.properties.event))];
+      const box = document.getElementById("wxAlert");
+      if (events.length) {
+        const storm = events.some(e => /thunderstorm|tornado/i.test(e));
+        box.innerHTML = `<b>⚠️ ${events.map(esc).join(", ")}</b>${storm ? "<br>⚡ Lightning risk: disconnect your antennas." : ""}`;
+        box.hidden = false;
+      } else box.hidden = true;
+    } catch {}
+  } catch (e) {
+    console.warn("Weather failed", e);
+    wxSet("wxText", e.message === "404" ? "NOAA weather covers US locations only." : "Weather couldn't load. Retrying in 10 min.");
+  }
+}
+
+// ================= Share with friends =================
+const SHARE_URL = location.protocol.startsWith("http") ? location.origin + location.pathname : "https://tacobandit0.github.io/hamdash/";
+document.getElementById("shareBtn").onclick = async () => {
+  const data = { title: "HamDash", url: SHARE_URL,
+    text: "Check out HamDash: solar conditions, gray line, band conditions and a live map of who's on the air. Enter your grid square when it opens." };
+  if (navigator.share) {
+    try { await navigator.share(data); return; }
+    catch (e) { if (e.name === "AbortError") return; }          // closed the share menu
+  }
+  try {
+    await navigator.clipboard.writeText(SHARE_URL);
+    const btn = document.getElementById("shareBtn"), lbl = document.getElementById("shareLbl");
+    btn.classList.add("done"); lbl.textContent = "Link copied";
+    setTimeout(() => { btn.classList.remove("done"); lbl.textContent = "Share"; }, 2500);
+  } catch {                                                       // no clipboard access: show the link to copy by hand
+    const box = document.getElementById("shareBox"), inp = document.getElementById("shareUrl");
+    inp.value = SHARE_URL; box.hidden = false; inp.focus(); inp.select();
+  }
+};
+document.getElementById("shareClose").onclick = () => { document.getElementById("shareBox").hidden = true; };
+
 // ================= Start =================
 drawClocks(); renderSolar(); renderBands(); drawGrayMap(); rebuildActBase(); renderActivity();
 requestAnimationFrame(frame);
@@ -757,6 +915,7 @@ setInterval(drawClocks, 1000);
 setInterval(() => { drawGrayMap(); rebuildActBase(); renderBands(); renderActivity(); }, 60000);
 loadGeo();
 loadSolar(); setInterval(loadSolar, 10 * 60000);
+loadWeather(); setInterval(loadWeather, 10 * 60000);
 startActivity();
 </script>
 </body>
