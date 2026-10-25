@@ -125,6 +125,17 @@
   .chips button.empty b { color: var(--muted); font-weight: 600; }
   .mapwrap { position: relative; }
   #actmap { cursor: crosshair; }
+  .tapinfo { margin-top: 8px; background: var(--inset); border: 1px solid var(--spot); border-radius: 10px; padding: 10px 12px; font-size: 15px; }
+  .tapinfo[hidden] { display: none; }
+  .tapinfo .tihead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; color: var(--muted); font-size: 13px; }
+  .tapinfo .ticlose { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font: inherit; font-size: 14px; cursor: pointer; }
+  .tapinfo .tilist { max-height: 55vh; overflow-y: auto; }
+  .tapinfo .tistation { padding: 8px 0; border-top: 1px solid var(--line); }
+  .tapinfo .tistation:first-child { border-top: 0; }
+  .tapinfo .tirow { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .tapinfo .call { font: 700 17px ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--spot); }
+  .tapinfo .freq { font: 600 15px ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  .tapinfo .where { color: var(--muted); font-size: 14px; margin-top: 2px; overflow-wrap: anywhere; }
   .tip { position: absolute; pointer-events: none; background: rgba(11,17,23,.95); border: 1px solid var(--spot);
     border-radius: 8px; padding: 8px 10px; font-size: 12px; min-width: 200px; max-width: 300px; display: none; z-index: 2;
     box-shadow: 0 6px 24px rgba(0,0,0,.5); }
@@ -238,6 +249,7 @@
       <canvas id="actmap" width="1440" height="720"></canvas>
       <div class="tip" id="tip"></div>
     </div>
+    <div class="tapinfo" id="tapInfo" hidden></div>
     <div class="legend">
       <span><i style="background:var(--spot);box-shadow:0 0 6px var(--spot)"></i>Station on the air (brighter = more recent)</span>
       <span><i style="background:#ff4fa3"></i>Home</span>
@@ -683,6 +695,7 @@ function renderActivity() {
     if (c) c.items.push(s); else clusters.push({ x, y, items: [s], seed: Math.random() * 10 });
   }
   for (const c of clusters) c.newest = Math.max(...c.items.map(s => s.t));
+  renderTapInfo();
 }
 
 // ----- animated map -----
@@ -724,6 +737,11 @@ function frame(now) {
     ctx.beginPath(); ctx.arc(c.x, c.y, coreR * 0.4, 0, 7); ctx.fill();
   }
   ctx.restore();
+  const sel = selectedCluster();
+  if (sel) {
+    ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(sel.x, sel.y, 5 + Math.min(6, Math.sqrt(sel.items.length) * 2) + 7, 0, 7); ctx.stroke();
+  }
   // station counts on clusters
   ctx.font = "700 15px ui-monospace, Menlo, Consolas, monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
   for (const c of clusters) if (c.items.length > 1) {
@@ -738,19 +756,33 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 
-// ----- tooltip -----
+// ----- station info: hover shows a quick bubble (mouse); a tap or click opens the info panel under the map -----
 const tip = document.getElementById("tip");
-function showTip(ev) {
+const ago = s => { const m = Math.round((Date.now() - s.t) / 60000); return m < 1 ? "just now" : m + " min ago"; };
+const keyOf = s => s.call + "|" + s.band;
+let selectedKey = null;     // station the open panel is about
+
+function clusterAt(ev) {
   const r = actCanvas.getBoundingClientRect();
   const sx = actCanvas.width / r.width, x = (ev.clientX - r.left) * sx, y = (ev.clientY - r.top) * sx;
-  const c = clusters.filter(c => Math.hypot(c.x - x, c.y - y) < 22).sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y))[0];
+  const reach = Math.max(22, 24 * sx);           // ~24 screen pixels, so dots are easy to hit with a finger
+  return clusters.filter(c => Math.hypot(c.x - x, c.y - y) < reach)
+    .sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y))[0];
+}
+function selectedCluster() {
+  return selectedKey ? clusters.find(c => c.items.some(s => keyOf(s) === selectedKey)) : null;
+}
+
+// Mouse hover bubble (desktop)
+function showTip(ev) {
+  if (ev.pointerType !== "mouse") return;
+  const c = clusterAt(ev);
   if (!c) { tip.style.display = "none"; return; }
-  const ago = s => { const m = Math.round((Date.now() - s.t) / 60000); return m < 1 ? "now" : m + " min ago"; };
   const items = c.items.slice(0, 6);
   tip.innerHTML = items.map(s => `
     <div class="row"><span class="call">${esc(s.call)}</span><span class="mono">${s.band} · ${(s.freq / 1000).toFixed(3)} MHz</span></div>
     <div class="where">${esc(s.where || "")}${s.mode ? " · " + s.mode : ""} · ${s.dist.toLocaleString()} mi · ${ago(s)}${s.src === "Parks on the Air" ? " · POTA" : ""}</div>`).join("")
-    + (c.items.length > 6 ? `<div class="where">+ ${c.items.length - 6} more</div>` : "");
+    + (c.items.length > 6 ? `<div class="where">+ ${c.items.length - 6} more · click for all</div>` : `<div class="where">Click to keep this open</div>`);
   tip.style.display = "block";
   const wrap = actCanvas.parentElement.getBoundingClientRect();
   let left = ev.clientX - wrap.left + 14, top = ev.clientY - wrap.top + 14;
@@ -759,9 +791,38 @@ function showTip(ev) {
   if (top + tip.offsetHeight > wrap.height) top = Math.max(4, ev.clientY - wrap.top - tip.offsetHeight - 14);
   tip.style.left = left + "px"; tip.style.top = top + "px";
 }
+
+// Info panel under the map: stays open until the same dot is tapped again or Close is pressed
+function renderTapInfo() {
+  const panel = document.getElementById("tapInfo");
+  const c = selectedCluster();
+  if (!c) { selectedKey = null; panel.hidden = true; return; }
+  panel.innerHTML = `
+    <div class="tihead"><span>${c.items.length === 1 ? "1 station" : c.items.length + " stations"} here · tap the dot again to close</span>
+      <button class="ticlose" id="tiClose">Close</button></div>
+    <div class="tilist">${c.items.map(s => `
+      <div class="tistation">
+        <div class="tirow"><span class="call">${esc(s.call)}</span><span class="freq">${s.band} · ${(s.freq / 1000).toFixed(3)} MHz${s.mode ? " · " + s.mode : ""}</span></div>
+        <div class="where">${esc(s.where || "")}${s.src === "Parks on the Air" ? " · POTA" : ""}</div>
+        <div class="where">${s.dist.toLocaleString()} mi away · spotted ${ago(s)}${s.by ? " by " + esc(s.by) : ""}</div>
+      </div>`).join("")}</div>`;
+  panel.hidden = false;
+  document.getElementById("tiClose").onclick = () => { selectedKey = null; renderTapInfo(); };
+}
+function onTap(ev) {
+  const c = clusterAt(ev);
+  const already = c && c === selectedCluster();
+  selectedKey = c && !already ? keyOf(c.items[0]) : null;
+  tip.style.display = "none";
+  renderTapInfo();
+  if (selectedKey && ev.pointerType !== "mouse") {
+    const panel = document.getElementById("tapInfo"), r = panel.getBoundingClientRect();
+    if (r.bottom > innerHeight) panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+}
 actCanvas.addEventListener("pointermove", showTip);
-actCanvas.addEventListener("pointerdown", showTip);
-actCanvas.addEventListener("pointerleave", () => tip.style.display = "none");
+actCanvas.addEventListener("pointerleave", ev => { if (ev.pointerType === "mouse") tip.style.display = "none"; });
+actCanvas.addEventListener("click", onTap);
 function esc(t) { return String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 
 document.querySelectorAll("#viewSeg button").forEach(b => b.onclick = () => {
