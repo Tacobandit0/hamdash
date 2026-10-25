@@ -19,10 +19,11 @@
   body { margin: 0; background: var(--bg); color: var(--text);
     font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     padding: env(safe-area-inset-top) max(12px, env(safe-area-inset-right)) 24px max(12px, env(safe-area-inset-left)); }
-  header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 12px 4px; max-width: 1200px; margin: 0 auto; }
-  header #updated { margin-top: 2px; }
-  .version { text-align: right; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; line-height: 1.35; }
-  .version .vnum { font-weight: 700; color: var(--text); font-size: 13px; }
+  /* Two matched rows: title with version, "Updated at" with the version date */
+  header { display: grid; grid-template-columns: 1fr auto; align-items: baseline; column-gap: 12px; row-gap: 2px;
+    padding: 12px 4px; max-width: 1200px; margin: 0 auto; }
+  header .vnum, header .vdate { text-align: right; font-variant-numeric: tabular-nums; }
+  header .vnum { font-size: 13px; font-weight: 700; letter-spacing: .5px; color: var(--muted); }
   footer { max-width: 1200px; margin: 16px auto 0; display: flex; flex-direction: column; align-items: center; gap: 10px; }
   .sharebtn { display: inline-flex; align-items: center; gap: 6px; background: var(--panel); color: var(--text);
     border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font: 600 13px inherit; font-family: inherit; cursor: pointer; }
@@ -148,11 +149,10 @@
 </head>
 <body>
 <header>
-  <div>
-    <h1>Ham<span>Dash</span></h1>
-    <div class="sub" id="updated">Loading…</div>
-  </div>
-  <div class="version"><div class="vnum">v1.0</div><div>25/10/2026</div></div>
+  <h1>Ham<span>Dash</span></h1>
+  <div class="vnum">v1.0</div>
+  <div class="sub" id="updated">Loading…</div>
+  <div class="sub vdate">25/10/2026</div>
 </header>
 
 <div class="setup" id="homeSetup" hidden>
