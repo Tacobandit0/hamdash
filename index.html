@@ -349,16 +349,59 @@ function projector(view, W, H) {
   const sx = W / (view.lon1 - view.lon0), sy = H / (view.lat1 - view.lat0);
   return { x: lon => (lon - view.lon0) * sx, y: lat => (view.lat1 - lat) * sy, sx, sy };
 }
+// Lines and outlines that cross the 180° meridian (Russia, Fiji, Antarctica) are "unwrapped" so they stay
+// continuous, then drawn a second time shifted by 360° so both halves appear without a stray line across the map.
+function unwrap(coords) {
+  let shift = 0, prev = null, min = Infinity, max = -Infinity;
+  const out = coords.map(([lo, la]) => {
+    if (prev !== null) { const d = lo + shift - prev; if (d > 180) shift -= 360; else if (d < -180) shift += 360; }
+    const l = lo + shift; prev = l; if (l < min) min = l; if (l > max) max = l;
+    return [l, la];
+  });
+  return { pts: out, min, max };
+}
+function tracePath(ctx, P, coords, closed) {
+  const u = unwrap(coords);
+  const offsets = [0]; if (u.max > 180) offsets.push(-360); if (u.min < -180) offsets.push(360);
+  for (const off of offsets) {
+    u.pts.forEach(([lo, la], i) => i ? ctx.lineTo(P.x(lo + off), P.y(la)) : ctx.moveTo(P.x(lo + off), P.y(la)));
+    if (closed) ctx.closePath();
+  }
+}
 function strokeLines(ctx, P, geom) {
   const lines = geom.type === "MultiLineString" ? geom.coordinates : [geom.coordinates];
   ctx.beginPath();
-  for (const line of lines) line.forEach(([lo, la], i) => {
-    if (!i || Math.abs(lo - line[i - 1][0]) > 180) ctx.moveTo(P.x(lo), P.y(la)); else ctx.lineTo(P.x(lo), P.y(la));
-  });
+  for (const line of lines) tracePath(ctx, P, line, false);
   ctx.stroke();
 }
-const shade = document.createElement("canvas"); shade.width = 360; shade.height = 180;
-const sctx = shade.getContext("2d");
+
+// Night and gray-line shading is painted straight into the map's own pixels (no hidden helper image),
+// which iPhone Safari draws reliably.
+function shadeInto(ctx, view, W, H, sun, nightAlpha) {
+  const GX = 180, GY = 90;                            // elevation sampled on a grid, then smoothed per pixel
+  const dLon = (view.lon1 - view.lon0) / GX, dLat = (view.lat1 - view.lat0) / GY;
+  const el = new Float32Array((GX + 1) * (GY + 1));
+  for (let j = 0; j <= GY; j++) for (let i = 0; i <= GX; i++)
+    el[j * (GX + 1) + i] = sunElevation(view.lat1 - j * dLat, view.lon0 + i * dLon, sun);
+  const img = ctx.getImageData(0, 0, W, H), d = img.data;
+  const sx = GX / W, sy = GY / H;
+  for (let y = 0; y < H; y++) {
+    const gy = (y + .5) * sy, j = Math.min(GY - 1, gy | 0), fy = gy - j;
+    for (let x = 0; x < W; x++) {
+      const gx = (x + .5) * sx, i = Math.min(GX - 1, gx | 0), fx = gx - i, k = j * (GX + 1) + i;
+      const e = (el[k] * (1 - fx) + el[k + 1] * fx) * (1 - fy) + (el[k + GX + 1] * (1 - fx) + el[k + GX + 2] * fx) * fy;
+      if (e >= 6) continue;                           // full daylight: leave the map as is
+      let r, g, b, a;
+      if (e < -6) { r = 2; g = 6; b = 12; a = .65; }                                   // night
+      else if (e < 0) { const t = (e + 6) / 6; r = 90; g = 70; b = 30; a = (165 - t * 95) / 255; }   // gray line, dark side
+      else { r = 200; g = 166; b = 75; a = (1 - e / 6) * 55 / 255; }                     // gray line, sunny side
+      a *= nightAlpha;
+      const p = (y * W + x) * 4;
+      d[p] += (r - d[p]) * a; d[p + 1] += (g - d[p + 1]) * a; d[p + 2] += (b - d[p + 2]) * a;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
 
 function drawWorld(canvas, view, opts = {}) {
   const ctx = canvas.getContext("2d"), W = canvas.width, H = canvas.height, P = projector(view, W, H);
@@ -370,10 +413,7 @@ function drawWorld(canvas, view, opts = {}) {
     ctx.fillStyle = "#3f6b4a"; ctx.strokeStyle = "#5d8a66"; ctx.lineWidth = lw;
     ctx.beginPath();
     const polys = geo.land.type === "Polygon" ? [geo.land.coordinates] : geo.land.coordinates;
-    for (const poly of polys) for (const ring of poly) ring.forEach(([lo, la], i) => {
-      if (i && Math.abs(lo - ring[i - 1][0]) > 180) ctx.moveTo(P.x(lo), P.y(la));
-      else i ? ctx.lineTo(P.x(lo), P.y(la)) : ctx.moveTo(P.x(lo), P.y(la));
-    });
+    for (const poly of polys) for (const ring of poly) tracePath(ctx, P, ring, true);
     ctx.fill("evenodd"); ctx.stroke();
     ctx.strokeStyle = "rgba(220,235,220,.35)"; ctx.lineWidth = lw; strokeLines(ctx, P, geo.borders);
     if (geo.states && span < 200) { ctx.strokeStyle = "rgba(220,235,220,.18)"; strokeLines(ctx, P, geo.states); }
@@ -384,18 +424,7 @@ function drawWorld(canvas, view, opts = {}) {
   for (let lo = Math.ceil(view.lon0 / step) * step; lo <= view.lon1; lo += step) { ctx.beginPath(); ctx.moveTo(P.x(lo), 0); ctx.lineTo(P.x(lo), H); ctx.stroke(); }
   for (let la = Math.ceil(view.lat0 / step) * step; la <= view.lat1; la += step) { ctx.beginPath(); ctx.moveTo(0, P.y(la)); ctx.lineTo(W, P.y(la)); ctx.stroke(); }
 
-  // night + gray line, sampled on a 360x180 grid across the view
-  const nightAlpha = opts.nightAlpha ?? 1;
-  const img = sctx.createImageData(360, 180);
-  const dLon = (view.lon1 - view.lon0) / 360, dLat = (view.lat1 - view.lat0) / 180;
-  for (let y = 0; y < 180; y++) for (let x = 0; x < 360; x++) {
-    const el = sunElevation(view.lat1 - (y + .5) * dLat, view.lon0 + (x + .5) * dLon, sun), i = (y * 360 + x) * 4;
-    if (el < -6) img.data.set([2, 6, 12, Math.round(165 * nightAlpha)], i);
-    else if (el < 0) { const t = (el + 6) / 6; img.data.set([90, 70, 30, Math.round((165 - t * 95) * nightAlpha)], i); }
-    else if (el < 6) img.data.set([200, 166, 75, Math.round((1 - el / 6) * 55 * nightAlpha)], i);
-  }
-  sctx.putImageData(img, 0, 0);
-  ctx.imageSmoothingEnabled = true; ctx.drawImage(shade, 0, 0, W, H);
+  shadeInto(ctx, view, W, H, sun, opts.nightAlpha ?? 1);
   return { ctx, W, H, P, sun };
 }
 function drawHome(ctx, P) {
