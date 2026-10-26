@@ -14,6 +14,7 @@
     --accent: #f2b33d; --good: #3ecf7a; --fair: #e8c547; --poor: #e5604f; --spot: #ffd23f; --sat: #5fd4f4;
   }
   * { box-sizing: border-box; }
+  body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); background: var(--bg); z-index: 50; pointer-events: none; }
   html { touch-action: pan-x pan-y; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   html, body { touch-action: pan-x pan-y; -webkit-text-size-adjust: 100%; }
   body { margin: 0; background: var(--bg); color: var(--text);
@@ -186,7 +187,7 @@
 <body>
 <header>
   <h1>Ham<span>Dash</span></h1>
-  <div class="vnum">v1.2.1</div>
+  <div class="vnum">v1.2.2</div>
   <div class="sub" id="updated">Loading…</div>
   <div class="sub vdate">10/25/2026</div>
 </header>
@@ -401,7 +402,7 @@ async function loadGeo() {
       states: us ? topojson.mesh(us, us.objects.states, (a, b) => a !== b) : null,
     };
   } catch (e) { console.warn("Map outlines unavailable", e); }
-  drawGrayMap(); rebuildActBase();
+  drawGrayMap(); rebuildActBase(); if (typeof rebuildSatBase === "function") { rebuildSatBase(); drawSatMap(); }
 }
 
 // A "view" is a lon/lat box drawn into a 2:1 canvas.
