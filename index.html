@@ -203,7 +203,12 @@
   .tapinfo .tistation { padding: 8px 0; border-top: 1px solid var(--line); }
   .tapinfo .tistation:first-child { border-top: 0; }
   .tapinfo .tirow { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-  .tapinfo .call { font: 700 17px ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--spot); }
+  .tapinfo .call { font: 700 17px ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--spot); text-decoration: none; }
+  .tapinfo a.call:hover { text-decoration: underline; }
+  .tapinfo .callwrap { display: inline-flex; align-items: center; gap: 8px; }
+  .qrzbtn { font: 700 12px/1 inherit; font-family: inherit; color: var(--text); text-decoration: none; background: var(--panel);
+    border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; white-space: nowrap; }
+  .qrzbtn:hover, .qrzbtn:focus-visible { border-color: var(--spot); color: var(--spot); outline: none; }
   .tapinfo .freq { font: 600 15px ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
   .tapinfo .where { color: var(--muted); font-size: 14px; margin-top: 2px; overflow-wrap: anywhere; }
   .tip { position: absolute; pointer-events: none; background: rgba(11,17,23,.95); border: 1px solid var(--spot);
@@ -219,7 +224,7 @@
 <body>
 <header>
   <h1>Ham<span>Dash</span></h1>
-  <div class="vnum">v1.3.4</div>
+  <div class="vnum">v1.4.0</div>
   <div class="sub" id="updated">Loading…</div>
   <div class="sub vdate">10/25/2026</div>
 </header>
@@ -1081,6 +1086,8 @@ function showTip(ev) {
 }
 
 // Info panel under the map: stays open until the same dot is tapped again or Close is pressed
+// QRZ page for a callsign; portable add-ons like /P or a country prefix are dropped so it lands on the operator's page
+const qrzUrl = call => "https://www.qrz.com/db/" + encodeURIComponent(baseCall(call));
 function renderTapInfo() {
   const panel = document.getElementById("tapInfo");
   const c = selectedCluster();
@@ -1090,7 +1097,7 @@ function renderTapInfo() {
       <button class="ticlose" id="tiClose">Close</button></div>
     <div class="tilist">${c.items.map(s => `
       <div class="tistation">
-        <div class="tirow"><span class="call">${esc(s.call)}</span><span class="freq">${s.band} · ${(s.freq / 1000).toFixed(3)} MHz${s.mode ? " · " + s.mode : ""}</span></div>
+        <div class="tirow"><span class="callwrap"><a class="call" href="${qrzUrl(s.call)}" target="_blank" rel="noopener">${esc(s.call)}</a><a class="qrzbtn" href="${qrzUrl(s.call)}" target="_blank" rel="noopener" aria-label="Look up ${esc(s.call)} on QRZ">QRZ ↗</a></span><span class="freq">${s.band} · ${(s.freq / 1000).toFixed(3)} MHz${s.mode ? " · " + s.mode : ""}</span></div>
         <div class="where">${esc(s.where || "")}${s.src === "Parks on the Air" ? " · POTA" : ""}</div>
         <div class="where">${s.dist.toLocaleString()} mi away · spotted ${ago(s)}${s.by ? " by " + esc(s.by) : ""}</div>
       </div>`).join("")}</div>`;
