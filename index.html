@@ -11,7 +11,7 @@
 <style>
   :root {
     --bg: #0b1117; --panel: #121b24; --inset: #0e161e; --line: #223140; --text: #e3eaf1; --muted: #8a9bab;
-    --accent: #f2b33d; --good: #3ecf7a; --fair: #e8c547; --poor: #e5604f; --spot: #ffd23f;
+    --accent: #f2b33d; --good: #3ecf7a; --fair: #e8c547; --poor: #e5604f; --spot: #ffd23f; --sat: #5fd4f4;
   }
   * { box-sizing: border-box; }
   html { touch-action: pan-x pan-y; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
@@ -106,6 +106,36 @@
   .wxalert { background: #3a1512; border: 1px solid var(--poor); color: #ffd7d1; border-radius: 8px; padding: 8px 10px; font-size: 13px; margin-bottom: 10px; }
   .wxalert[hidden] { display: none; }
   .wxalert b { color: #fff; }
+  #satmap { cursor: grab; touch-action: none; }
+  #satmap:active { cursor: grabbing; }
+  .satbar { display: flex; justify-content: space-between; align-items: center; gap: 8px 12px; flex-wrap: wrap; margin: 12px 0 8px; }
+  .satbar .chips { margin: 0; }
+  .satlist { display: grid; gap: 8px; }
+  .pass { background: var(--inset); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; cursor: pointer;
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; }
+  .pass.sel { border-color: var(--sat); }
+  .pass.live { border-color: var(--good); box-shadow: 0 0 0 1px var(--good) inset; }
+  .pass .pname { font-weight: 700; font-size: 16px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .pass .mode { font-size: 11px; font-weight: 700; border-radius: 4px; padding: 1px 6px; color: #0b1117; background: var(--sat); }
+  .pass .mode.lin { background: #b18cff; }
+  .pass .when { text-align: right; font-variant-numeric: tabular-nums; }
+  .pass .when b { display: block; font-size: 16px; }
+  .pass .when span { font-size: 12px; color: var(--muted); }
+  .pass.live .when b { color: var(--good); }
+  .pass .facts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .pass .facts b { color: var(--text); font-weight: 600; }
+  .pass .el.great { color: var(--good); } .pass .el.good { color: var(--fair); }
+  .pass .freq { grid-column: 1 / -1; font: 600 13px ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--text); overflow-wrap: anywhere; }
+  .pass .note { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
+  .pass .note.warnnote { color: var(--fair); }
+  .pass .details { grid-column: 1 / -1; display: none; gap: 4px; margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--line); }
+  .pass.open .details { display: grid; }
+  .pass .flag { font-size: 14px; }
+  .pass .chev { color: var(--muted); font-size: 12px; font-weight: 400; }
+  .morebtn { margin-top: 8px; width: 100%; background: var(--inset); color: var(--text); border: 1px solid var(--line); border-radius: 10px;
+    padding: 9px; font: 600 14px inherit; font-family: inherit; cursor: pointer; }
+  .morebtn[hidden] { display: none; }
+  .satempty { color: var(--muted); font-size: 14px; padding: 8px 2px; }
   .warn { display: none; max-width: 1200px; margin: 0 auto 12px; background: #2a1714; border: 1px solid var(--poor);
     border-radius: 10px; padding: 10px 14px; font-size: 14px; }
   .warn.on { display: block; }
@@ -155,7 +185,7 @@
 <body>
 <header>
   <h1>Ham<span>Dash</span></h1>
-  <div class="vnum">v1.1.1</div>
+  <div class="vnum">v1.2.0</div>
   <div class="sub" id="updated">Loading…</div>
   <div class="sub vdate">10/25/2026</div>
 </header>
@@ -223,6 +253,31 @@
       <span>Tap a dot for details · pinch or scroll to zoom, drag to move</span>
       <span class="actstatus" id="actStatus"></span>
     </div>
+  </section>
+
+  <section class="panel full" id="satPanel">
+    <div class="panelhead">
+      <h2>Satellite passes</h2>
+      <button class="resetbtn" id="satReset" hidden>Reset view</button>
+    </div>
+    <div class="mapwrap">
+      <canvas id="satmap" width="1440" height="720"></canvas>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--sat)"></i>Satellite now (circle = area it can hear)</span>
+      <span><i style="background:#ff4fa3"></i>Home</span>
+      <span>Tap a satellite to show its path · pinch or scroll to zoom, drag to move</span>
+    </div>
+    <div class="satbar">
+      <div class="chips" id="satElChips">
+        <button data-el="10">10°+</button>
+        <button data-el="20">20°+</button>
+        <button data-el="40">40°+</button>
+      </div>
+      <span class="sub" id="satStatus">Loading orbits…</span>
+    </div>
+    <div class="satlist" id="satList"></div>
+    <button class="morebtn" id="satMore" hidden>Show more passes</button>
   </section>
 
   <section class="panel">
@@ -444,7 +499,7 @@ function drawHome(ctx, P) {
 
 // The gray line map can be zoomed and moved; GV is the box it shows (whole world unless you zoom).
 const grayCanvas = document.getElementById("map");
-const grayBase = document.createElement("canvas"); grayBase.width = 1440; grayBase.height = 720;
+const grayBase = document.createElement("canvas"); grayBase.width = 1440; grayBase.height = 720; grayBase.getContext("2d", { willReadFrequently: true });
 let GV = { ...VIEWS.world }, grayBaseView = null;
 try { const g = JSON.parse(localStorage.getItem("hamdash.graybox") || "null"); if (g && g.lon1 > g.lon0) GV = g; } catch {}
 function drawGrayMap() {                 // full, sharp redraw (every minute and once zooming settles)
@@ -775,7 +830,7 @@ function reCluster() {
 
 // ----- animated map -----
 const actCanvas = document.getElementById("actmap"), actCtx = actCanvas.getContext("2d");
-const base = document.createElement("canvas"); base.width = 1440; base.height = 720;
+const base = document.createElement("canvas"); base.width = 1440; base.height = 720; base.getContext("2d", { willReadFrequently: true });
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let baseView = null;      // the box the cached background was drawn for
 function rebuildActBase() {
@@ -938,7 +993,8 @@ function clampView(lon0, lat1, span) {
 // opts: getView() → current box, setView(box) → apply it, onTap(ev) for a quick tap/click, onDrag() when movement starts
 function attachPanZoom(canvas, opts) {
   const pointers = new Map();
-  let gesture = null, dragged = false, multi = false;
+  let gesture = null, dragged = false, multi = false, lastTouch = 0;
+  const fakeMouse = ev => ev.pointerType === "touch" || Date.now() - lastTouch < 800;   // ignore mouse events copied from a tap
   const geoAt = (cx, cy) => {
     const V = opts.getView(), r = canvas.getBoundingClientRect(), span = V.lon1 - V.lon0;
     return { lon: V.lon0 + (cx - r.left) / r.width * span, lat: V.lat1 - (cy - r.top) / r.height * (span / 2), r };
@@ -972,19 +1028,19 @@ function attachPanZoom(canvas, opts) {
   }
   // mouse and pen
   canvas.addEventListener("pointerdown", ev => {
-    if (ev.pointerType === "touch") return;                    // touches are handled by the touch events below
+    if (fakeMouse(ev)) return;                                 // touches are handled by the touch events below
     canvas.setPointerCapture(ev.pointerId);
     pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
     if (pointers.size === 1) { dragged = false; multi = false; } else multi = true;
     start();
   });
   canvas.addEventListener("pointermove", ev => {
-    if (ev.pointerType === "touch" || !pointers.has(ev.pointerId)) return;
+    if (fakeMouse(ev) || !pointers.has(ev.pointerId)) return;
     pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
     move();
   });
   const endPointer = ev => {
-    if (ev.pointerType === "touch") return;
+    if (fakeMouse(ev) && !pointers.has(ev.pointerId)) return;
     const wasTap = ev.type === "pointerup" && pointers.size === 1 && !dragged && !multi;
     pointers.delete(ev.pointerId);
     if (wasTap && opts.onTap) opts.onTap(ev);
@@ -993,7 +1049,7 @@ function attachPanZoom(canvas, opts) {
   canvas.addEventListener("pointerup", endPointer);
   canvas.addEventListener("pointercancel", endPointer);
   // iPhone / touchscreens: the map owns every touch that starts on it, so Safari never scrolls or zooms the page from here
-  const sync = e => { pointers.clear(); for (const t of e.touches) pointers.set("t" + t.identifier, { x: t.clientX, y: t.clientY }); };
+  const sync = e => { lastTouch = Date.now(); pointers.clear(); for (const t of e.touches) pointers.set("t" + t.identifier, { x: t.clientX, y: t.clientY }); };
   canvas.addEventListener("touchstart", e => {
     e.preventDefault();
     if (e.touches.length === 1) { dragged = false; multi = false; } else multi = true;
@@ -1005,6 +1061,7 @@ function attachPanZoom(canvas, opts) {
     const t = e.changedTouches[0];
     const wasTap = e.type === "touchend" && e.touches.length === 0 && !dragged && !multi;
     sync(e); start();                                          // lifting one finger of a pinch continues as a drag
+    lastTouch = Date.now();
     if (wasTap && t && opts.onTap) opts.onTap({ clientX: t.clientX, clientY: t.clientY, pointerType: "touch" });
   };
   canvas.addEventListener("touchend", endTouch, { passive: false });
@@ -1079,7 +1136,7 @@ function saveHome(grid) {
   try { localStorage.setItem("hamdash.home", HOME.grid); } catch {}
   setupEl.hidden = true;
   for (const s of stations.values()) s.dist = Math.round(miles(HOME, s.loc));
-  drawGrayMap(); rebuildActBase(); drawClocks(); renderActivity(); loadWeather();
+  drawGrayMap(); rebuildActBase(); drawClocks(); renderActivity(); loadWeather(); computePasses(); drawSatMap();
 }
 document.getElementById("homeForm").onsubmit = e => { e.preventDefault(); saveHome(gridIn.value); };
 document.getElementById("homeEdit").onclick = () => openSetup(true);
@@ -1175,6 +1232,300 @@ async function loadWeather() {
   }
 }
 
+// ================= Satellite passes =================
+// Frequencies from AMSAT's FM and linear satellite pages (updated Oct 18, 2026). Orbits from CelesTrak.
+const SATS = [
+  { id: 25544, name: "ISS", type: "FM", up: "145.990 FM (67 Hz tone)", down: "437.800 FM",
+    note: "FM repeater isn't always on. Check ARISS for the current mode." },
+  { id: 27607, name: "SO-50", type: "FM", up: "145.850 FM (67 Hz tone)", down: "436.795 FM",
+    note: "Turn it on first: key up for 2 seconds with a 74.4 Hz tone." },
+  { id: 61781, name: "AO-123", type: "FM", up: "145.850 FM (67 Hz tone)", down: "435.400 FM" },
+  { id: 43017, name: "AO-91", type: "FM", up: "435.250 FM (no tone)", down: "145.960 FM", sunOnly: true,
+    note: "Use as little power as you can so weaker stations can get in." },
+  { id: 44909, name: "RS-44", type: "Linear", up: "145.935–145.995 LSB", down: "435.610–435.670 USB", beacon: "435.605 CW" },
+  { id: 24278, name: "FO-29", type: "Linear", up: "145.900–146.000 LSB", down: "435.800–435.900 USB", beacon: "435.795 CW",
+    note: "Transponder runs on a schedule." },
+  { id: 7530, name: "AO-7", type: "Linear", up: "432.125–432.175 LSB (mode B)", down: "145.925–145.975 USB", beacon: "29.502 CW", sunOnly: true,
+    note: "Some passes it's in mode A instead: 145.850–145.950 up, 29.400–29.500 down." },
+  { id: 39444, name: "AO-73", type: "Linear", up: "435.130–435.150 LSB", down: "145.950–145.970 USB", beacon: "145.935 BPSK telemetry", shadeOnly: true,
+    note: "Transponder runs while it's in Earth's shadow." },
+];
+const satCanvas = document.getElementById("satmap");
+const satBase = document.createElement("canvas"); satBase.width = 1440; satBase.height = 720; satBase.getContext("2d", { willReadFrequently: true });
+let SV = { ...VIEWS.world }, satBaseView = null, satLib = null, satRecs = [], passes = [], satSel = null, satMinEl = 0;
+try { const s = JSON.parse(localStorage.getItem("hamdash.satbox") || "null"); if (s && s.lon1 > s.lon0) SV = s; } catch {}
+satMinEl = 10;
+try { const e = +localStorage.getItem("hamdash.satel"); if ([10, 20, 40].includes(e)) satMinEl = e; } catch {}
+let satShowAll = false;
+
+async function loadSatLib() {
+  if (window.satellite) return window.satellite;
+  await new Promise((ok, bad) => {
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js";
+    s.onload = ok; s.onerror = bad; document.head.appendChild(s);
+  });
+  return window.satellite;
+}
+// Orbit data changes slowly, so it's kept for 12 hours (CelesTrak asks apps not to download it too often).
+async function loadTLEs() {
+  let cached = null;
+  try { cached = JSON.parse(localStorage.getItem("hamdash.tle") || "null"); } catch {}
+  if (cached && Date.now() - cached.t < 12 * 3600e3) return cached.text;
+  try {
+    const r = await fetch("https://celestrak.org/NORAD/elements/gp.php?GROUP=amateur&FORMAT=tle");
+    if (!r.ok) throw new Error(r.status);
+    const text = await r.text();
+    if (!/^1 /m.test(text)) throw new Error("bad data");
+    try { localStorage.setItem("hamdash.tle", JSON.stringify({ t: Date.now(), text })); } catch {}
+    return text;
+  } catch (e) {
+    if (cached) return cached.text;          // use older orbits rather than nothing
+    throw e;
+  }
+}
+async function initSats() {
+  try {
+    satLib = await loadSatLib();
+    const lines = (await loadTLEs()).split("\n").map(s => s.trim());
+    satRecs = [];
+    for (let i = 0; i + 1 < lines.length; i++) {
+      if (!lines[i].startsWith("1 ") || !lines[i + 1].startsWith("2 ")) continue;
+      const id = +lines[i].slice(2, 7), info = SATS.find(s => s.id === id);
+      if (info) satRecs.push({ ...info, rec: satLib.twoline2satrec(lines[i], lines[i + 1]) });
+      i++;
+    }
+    satRecs.sort((a, b) => SATS.indexOf(SATS.find(s => s.id === a.id)) - SATS.indexOf(SATS.find(s => s.id === b.id)));
+    computePasses();
+    drawSatMap();
+  } catch (e) {
+    console.warn("Satellites failed", e);
+    document.getElementById("satStatus").innerHTML = `<span class="err">Couldn't load satellite orbits. Retrying in 10 min.</span>`;
+  }
+}
+
+// Where a satellite is at a moment: map position, height, and how it looks from home
+function satAt(s, date) {
+  const pv = satLib.propagate(s.rec, date);
+  if (!pv || !pv.position) return null;
+  const gmst = satLib.gstime(date), gd = satLib.eciToGeodetic(pv.position, gmst);
+  const obs = { latitude: rad(HOME.lat), longitude: rad(HOME.lon), height: 0.1 };
+  const look = satLib.ecfToLookAngles(obs, satLib.eciToEcf(pv.position, gmst));
+  return { lat: deg(gd.latitude), lon: ((deg(gd.longitude) + 540) % 360) - 180, alt: gd.height,
+    el: deg(look.elevation), az: (deg(look.azimuth) + 360) % 360, eci: pv.position };
+}
+// In sunlight or in Earth's shadow (simple cylinder shadow; good enough to tell day passes from eclipse)
+function satSunlit(eci, date) {
+  const jd = date.getTime() / 86400000 + 2440587.5, n = jd - 2451545.0;
+  const g = rad((357.528 + 0.9856003 * n) % 360), L = (280.46 + 0.9856474 * n) % 360;
+  const lam = rad(L + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)), eps = rad(23.439 - 0.0000004 * n);
+  const sun = [Math.cos(lam), Math.cos(eps) * Math.sin(lam), Math.sin(eps) * Math.sin(lam)];   // unit vector, same frame as ECI
+  const dot = eci.x * sun[0] + eci.y * sun[1] + eci.z * sun[2];
+  if (dot > 0) return true;
+  const perp = Math.sqrt(Math.max(0, eci.x ** 2 + eci.y ** 2 + eci.z ** 2 - dot * dot));
+  return perp > 6371;
+}
+
+// Find every pass over home in the next 24 hours
+function computePasses() {
+  if (!satLib || HOME.unset) { passes = []; renderPasses(); return; }
+  const now = Date.now(), end = now + 24 * 3600e3, STEP = 30e3, out = [];
+  for (const s of satRecs) {
+    const elAt = t => { const p = satAt(s, new Date(t)); return p ? p.el : -90; };
+    const edge = (a, b, rising) => {                 // narrow the horizon crossing to about a second
+      for (let k = 0; k < 14; k++) { const m = (a + b) / 2; (elAt(m) > 0) === rising ? (b = m) : (a = m); }
+      return (a + b) / 2;
+    };
+    let prevT = now - STEP, prevEl = elAt(prevT), cur = null;
+    if (prevEl > 0) {                               // already up: walk back to find when it rose
+      let t = prevT; while (elAt(t) > 0 && now - t < 30 * 60e3) t -= STEP;
+      cur = { aos: edge(t, t + STEP, true), maxEl: -90, tMax: null };
+    }
+    for (let t = now; t <= end; t += STEP) {
+      const el = elAt(t);
+      if (prevEl <= 0 && el > 0) cur = { aos: edge(prevT, t, true), maxEl: -90, tMax: null };
+      if (cur && el > cur.maxEl) { cur.maxEl = el; cur.tMax = t; }
+      if (cur && prevEl > 0 && el <= 0) {
+        cur.los = edge(prevT, t, false);
+        out.push(finishPass(s, cur));
+        cur = null;
+      }
+      prevT = t; prevEl = el;
+    }
+  }
+  passes = out.filter(p => p.los > now).sort((a, b) => a.aos - b.aos);
+  renderPasses();
+}
+function finishPass(s, c) {
+  // refine the highest point to the nearest few seconds
+  let best = c.tMax;
+  for (let t = c.tMax - 30e3; t <= c.tMax + 30e3; t += 2e3) { const p = satAt(s, new Date(t)); if (p && p.el > c.maxEl) { c.maxEl = p.el; best = t; } }
+  const a = satAt(s, new Date(c.aos)), m = satAt(s, new Date(best)), l = satAt(s, new Date(c.los));
+  // how much of the pass is in sunlight (some satellites only work in sun, AO-73 only in shadow)
+  let lit = 0;
+  for (let i = 0; i <= 10; i++) { const t = c.aos + (c.los - c.aos) * i / 10, q = satAt(s, new Date(t)); if (q && satSunlit(q.eci, new Date(t))) lit++; }
+  return { sat: s, aos: c.aos, los: c.los, tMax: best, maxEl: c.maxEl,
+    azAos: a.az, azMax: m.az, azLos: l.az, sunFrac: lit / 11 };
+}
+
+// ----- the list -----
+const hm = t => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+function countdown(ms) {
+  const s = Math.max(0, Math.round(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), ss = s % 60;
+  return h ? `${h}h ${m}m` : m >= 10 ? `${m} min` : `${m}:${String(ss).padStart(2, "0")}`;
+}
+function renderPasses() {
+  document.querySelectorAll("#satElChips button").forEach(b => b.classList.toggle("on", +b.dataset.el === satMinEl));
+  const box = document.getElementById("satList"), st = document.getElementById("satStatus");
+  if (HOME.unset) { box.innerHTML = `<div class="satempty">Set your grid square to see passes over your station.</div>`; st.textContent = ""; return; }
+  if (!satLib) return;
+  const now = Date.now();
+  const all = passes.filter(p => p.maxEl >= satMinEl && p.los > now);
+  const list = all.slice(0, satShowAll ? 15 : 5);
+  const more = document.getElementById("satMore");
+  more.hidden = all.length <= 5;
+  more.textContent = satShowAll ? "Show fewer passes" : "Show more passes";
+  st.textContent = list.length ? `Next 24 hours · times are local` : "";
+  box.innerHTML = list.length ? list.map(p => {
+    const live = p.aos <= now, s = p.sat;
+    const elCls = p.maxEl >= 45 ? "great" : p.maxEl >= 20 ? "good" : "";
+    const dur = Math.round((p.los - p.aos) / 60000);
+    let sunNote = "";
+    if (s.sunOnly && p.sunFrac === 0) sunNote = "In Earth's shadow for this whole pass, so it's likely off.";
+    else if (s.sunOnly && p.sunFrac < 1) sunNote = "Part of this pass is in Earth's shadow. It only works while sunlit.";
+    else if (s.shadeOnly && p.sunFrac === 1) sunNote = "In sunlight for this whole pass, so the transponder is likely off.";
+    else if (s.shadeOnly && p.sunFrac > 0) sunNote = "Part of this pass is in sunlight. The transponder only runs in Earth's shadow.";
+    if (sunNote) sunNote = `<div class="note warnnote">⚠️ ${sunNote}</div>`;
+    const open = live || satSel === s.id;
+    return `<div class="pass ${live ? "live" : ""} ${satSel === s.id ? "sel" : ""} ${open ? "open" : ""}" data-id="${s.id}" role="button" tabindex="0" aria-expanded="${open}">
+      <div class="pname">${esc(s.name)} <span class="mode ${s.type === "Linear" ? "lin" : ""}">${s.type}</span>${sunNote ? `<span class="flag" title="See note">⚠️</span>` : ""}<span class="chev">${open ? "▲" : "▼"}</span></div>
+      <div class="when" data-aos="${p.aos}" data-los="${p.los}">${live
+        ? `<b>On now</b><span>${countdown(p.los - now)} left</span>`
+        : `<b>${hm(p.aos)}</b><span>in ${countdown(p.aos - now)}</span>`}</div>
+      <div class="facts">
+        <span>Max <b class="el ${elCls}">${Math.round(p.maxEl)}°</b></span>
+        <span><b>${dur} min</b></span>
+        <span>${compass(p.azAos)} → ${compass(p.azMax)} → ${compass(p.azLos)}</span>
+        <span>${hm(p.aos)}–${hm(p.los)}</span>
+      </div>
+      <div class="details">
+        <div class="freq">↑ Up ${s.up}</div>
+        <div class="freq">↓ Down ${s.down}</div>
+        ${s.beacon ? `<div class="freq">Beacon ${s.beacon}</div>` : ""}
+        ${s.note ? `<div class="note">${esc(s.note)}</div>` : ""}${sunNote}
+      </div>
+    </div>`;
+  }).join("") : `<div class="satempty">No passes above ${satMinEl}° in the next 24 hours.</div>`;
+  box.querySelectorAll(".pass").forEach(el => {
+    const pick = () => { satSel = +el.dataset.id === satSel ? null : +el.dataset.id; renderPasses(); drawSatMap(); };
+    el.onclick = pick;
+    el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } };
+  });
+}
+function tickPasses() {                  // countdowns, once a second
+  if (!satLib || HOME.unset) return;
+  const now = Date.now();
+  if (passes.some(p => p.los < now)) { passes = passes.filter(p => p.los >= now); renderPasses(); return; }
+  let changed = false;
+  document.querySelectorAll("#satList .when").forEach(w => {
+    const aos = +w.dataset.aos, los = +w.dataset.los;
+    if (aos <= now && !w.closest(".pass").classList.contains("live")) changed = true;
+    else w.querySelector("span").textContent = aos <= now ? `${countdown(los - now)} left` : `in ${countdown(aos - now)}`;
+  });
+  if (changed) renderPasses();
+}
+document.getElementById("satMore").onclick = () => { satShowAll = !satShowAll; renderPasses(); };
+document.querySelectorAll("#satElChips button").forEach(b => b.onclick = () => {
+  satMinEl = +b.dataset.el; try { localStorage.setItem("hamdash.satel", satMinEl); } catch {}
+  renderPasses();
+});
+
+// ----- the live map -----
+function rebuildSatBase() { drawWorld(satBase, SV, { nightAlpha: 0.7 }); satBaseView = { ...SV }; }
+function footprintRing(lat, lon, alt) {   // circle of Earth a satellite can see (down to the horizon)
+  const r = Math.acos(6371 / (6371 + alt)), pts = [];
+  const φ1 = rad(lat), λ1 = rad(lon);
+  for (let i = 0; i <= 72; i++) {
+    const b = i / 72 * 2 * Math.PI;
+    const φ2 = Math.asin(Math.sin(φ1) * Math.cos(r) + Math.cos(φ1) * Math.sin(r) * Math.cos(b));
+    const λ2 = λ1 + Math.atan2(Math.sin(b) * Math.sin(r) * Math.cos(φ1), Math.cos(r) - Math.sin(φ1) * Math.sin(φ2));
+    pts.push([((deg(λ2) + 540) % 360) - 180, deg(φ2)]);
+  }
+  return pts;
+}
+let satMarks = [];
+function drawSatMap() {
+  if (!satBaseView) rebuildSatBase();
+  const ctx = satCanvas.getContext("2d"), P = projector(SV, 1440, 720);
+  if (satBaseView.lon0 !== SV.lon0 || satBaseView.lon1 !== SV.lon1 || satBaseView.lat1 !== SV.lat1) {
+    const k = (satBaseView.lon1 - satBaseView.lon0) / (SV.lon1 - SV.lon0);
+    ctx.fillStyle = "#123a57"; ctx.fillRect(0, 0, 1440, 720);
+    ctx.drawImage(satBase, P.x(satBaseView.lon0), P.y(satBaseView.lat1), 1440 * k, 720 * k);
+  } else ctx.drawImage(satBase, 0, 0);
+  satMarks = [];
+  if (!satLib) { drawHome(ctx, P); return; }
+  const now = new Date();
+  const pos = satRecs.map(s => ({ s, p: satAt(s, now) })).filter(x => x.p);
+  // ground track for the selected satellite (next 100 minutes)
+  if (satSel) {
+    const s = satRecs.find(x => x.id === satSel);
+    if (s) {
+      const pts = [];
+      for (let m = 0; m <= 100; m += 1) { const q = satAt(s, new Date(now.getTime() + m * 60e3)); if (q) pts.push([q.lon, q.lat]); }
+      ctx.save(); ctx.setLineDash([10, 8]); ctx.strokeStyle = "rgba(95,212,244,.85)"; ctx.lineWidth = 2.5;
+      ctx.beginPath(); tracePath(ctx, P, pts, false); ctx.stroke(); ctx.restore();
+    }
+  }
+  // footprints, then markers on top
+  for (const { s, p } of pos) {
+    const up = p.el > 0, sel = s.id === satSel;
+    ctx.beginPath(); tracePath(ctx, P, footprintRing(p.lat, p.lon, p.alt), true);
+    ctx.fillStyle = up ? "rgba(62,207,122,.16)" : sel ? "rgba(95,212,244,.12)" : "rgba(95,212,244,.05)";
+    ctx.strokeStyle = up ? "rgba(62,207,122,.9)" : sel ? "rgba(95,212,244,.8)" : "rgba(95,212,244,.35)";
+    ctx.lineWidth = up || sel ? 2.5 : 1.5; ctx.fill(); ctx.stroke();
+  }
+  ctx.font = "700 20px -apple-system, Segoe UI, sans-serif"; ctx.textBaseline = "middle";
+  for (const { s, p } of pos) {
+    const up = p.el > 0, sel = s.id === satSel;
+    for (const off of [0, -360, 360]) {            // draw near both edges when the view wraps
+      const x = P.x(p.lon + off), y = P.y(p.lat);
+      if (x < -40 || x > 1480 || y < -40 || y > 760) continue;
+      const col = up ? "#3ecf7a" : "#5fd4f4";
+      ctx.save(); ctx.translate(x, y); ctx.rotate(Math.PI / 4);
+      ctx.fillStyle = col; ctx.strokeStyle = sel ? "#fff" : "#0b1117"; ctx.lineWidth = sel ? 3 : 2;
+      const r = sel ? 10 : 8; ctx.fillRect(-r, -r, 2 * r, 2 * r); ctx.strokeRect(-r, -r, 2 * r, 2 * r); ctx.restore();
+      ctx.lineWidth = 5; ctx.strokeStyle = "rgba(0,0,0,.75)"; ctx.strokeText(s.name, x + 16, y - 14);
+      ctx.fillStyle = up ? "#bff5d3" : "#e6f8fd"; ctx.fillText(s.name, x + 16, y - 14);
+      satMarks.push({ id: s.id, x, y });
+    }
+  }
+  drawHome(ctx, P);
+}
+const satPZ = attachPanZoom(satCanvas, {
+  getView: () => SV,
+  setView: box => {
+    SV = box; showSatReset();
+    requestAnimationFrame(drawSatMap);
+    clearTimeout(satPZ.t);
+    satPZ.t = setTimeout(() => {
+      rebuildSatBase(); drawSatMap();
+      try { localStorage.setItem("hamdash.satbox", JSON.stringify(SV)); } catch {}
+    }, 150);
+  },
+  onTap: ev => {
+    const r = satCanvas.getBoundingClientRect(), k = satCanvas.width / r.width;
+    const x = (ev.clientX - r.left) * k, y = (ev.clientY - r.top) * k, reach = Math.max(30, 26 * k);
+    const hit = satMarks.filter(m => Math.hypot(m.x - x, m.y - y) < reach).sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y))[0];
+    satSel = hit ? (hit.id === satSel ? null : hit.id) : null;
+    renderPasses(); drawSatMap();
+  },
+});
+function showSatReset() { document.getElementById("satReset").hidden = (SV.lon1 - SV.lon0) >= 359.9; }
+document.getElementById("satReset").onclick = () => {
+  SV = { ...VIEWS.world }; showSatReset(); rebuildSatBase(); drawSatMap();
+  try { localStorage.removeItem("hamdash.satbox"); } catch {}
+};
+
 // ================= Share with friends =================
 const SHARE_URL = location.protocol.startsWith("http") ? location.origin + location.pathname : "https://tacobandit0.github.io/hamdash/";
 document.getElementById("shareBtn").onclick = async () => {
@@ -1204,6 +1555,10 @@ setInterval(() => { drawGrayMap(); rebuildActBase(); renderBands(); renderActivi
 loadGeo();
 loadSolar(); setInterval(loadSolar, 10 * 60000);
 loadWeather(); setInterval(loadWeather, 10 * 60000);
+showSatReset(); rebuildSatBase(); drawSatMap(); renderPasses();
+initSats(); setInterval(initSats, 10 * 60000);           // re-check orbits (cached 12 h) and recompute passes
+setInterval(() => { drawSatMap(); tickPasses(); }, 1000);
+setInterval(rebuildSatBase, 60000);                      // keep the night shading current
 startActivity();
 </script>
 </body>
