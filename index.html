@@ -56,6 +56,7 @@
   .clock.big { grid-column: span 2; }
   .clock.big .t { font-size: 34px; color: var(--accent); }
   .clock .l { font-size: 12px; color: var(--muted); }
+  @media (min-width: 900px) { .clocks { grid-template-columns: repeat(4, 1fr); } .clock.big { grid-column: span 2; } }
   .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .stat { background: var(--inset); border-radius: 8px; padding: 8px; text-align: center; }
   .stat .v { font: 600 24px/1.2 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
@@ -185,7 +186,7 @@
 <body>
 <header>
   <h1>Ham<span>Dash</span></h1>
-  <div class="vnum">v1.2.0</div>
+  <div class="vnum">v1.2.1</div>
   <div class="sub" id="updated">Loading…</div>
   <div class="sub vdate">10/25/2026</div>
 </header>
@@ -255,6 +256,15 @@
     </div>
   </section>
 
+  <section class="panel full">
+    <h2>Solar conditions</h2>
+    <div class="stats">
+      <div class="stat"><div class="l">Solar flux</div><div class="v" id="sfi">–</div><div class="n" id="sfiN"></div></div>
+      <div class="stat"><div class="l">Kp index</div><div class="v" id="kp">–</div><div class="n" id="kpN"></div></div>
+      <div class="stat"><div class="l">X-ray</div><div class="v" id="xray">–</div><div class="n" id="xrayN"></div></div>
+    </div>
+  </section>
+
   <section class="panel full" id="satPanel">
     <div class="panelhead">
       <h2>Satellite passes</h2>
@@ -280,16 +290,7 @@
     <button class="morebtn" id="satMore" hidden>Show more passes</button>
   </section>
 
-  <section class="panel">
-    <h2>Solar conditions</h2>
-    <div class="stats">
-      <div class="stat"><div class="l">Solar flux</div><div class="v" id="sfi">–</div><div class="n" id="sfiN"></div></div>
-      <div class="stat"><div class="l">Kp index</div><div class="v" id="kp">–</div><div class="n" id="kpN"></div></div>
-      <div class="stat"><div class="l">X-ray</div><div class="v" id="xray">–</div><div class="n" id="xrayN"></div></div>
-    </div>
-  </section>
-
-  <section class="panel">
+  <section class="panel full">
     <h2>Clocks</h2>
     <div class="clocks" id="clocks"></div>
   </section>
