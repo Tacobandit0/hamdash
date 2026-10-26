@@ -138,6 +138,34 @@
     padding: 9px; font: 600 14px inherit; font-family: inherit; cursor: pointer; }
   .morebtn[hidden] { display: none; }
   .satempty { color: var(--muted); font-size: 14px; padding: 8px 2px; }
+  .setupform input.callin { width: 130px; }
+  .stationbox { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; }
+  .stationbox[hidden] { display: none; }
+  .stationbox .callsign { font: 800 30px/1.1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--accent); letter-spacing: 1px; }
+  .stationbox .callsign.nocall { font-size: 20px; color: var(--text); letter-spacing: 0; font-family: inherit; font-weight: 700; }
+  .stationbox .opline { font-size: 15px; margin-top: 2px; }
+  .stationbox .opline .cls { color: var(--muted); }
+  .stationbox .stgrid { display: flex; align-items: center; gap: 8px; }
+  .gridchip { font: 600 15px ui-monospace, "SF Mono", Menlo, Consolas, monospace; background: var(--inset); border: 1px solid var(--line);
+    border-radius: 999px; padding: 5px 12px; }
+  .gridchip::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #ff4fa3; margin-right: 7px; vertical-align: 1px; }
+  .stationbox .stnote { flex-basis: 100%; }
+  .stationbox .stnote[hidden] { display: none; }
+  .myspot { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 10px 2px; border-top: 1px solid var(--line); }
+  .myspot:first-child { border-top: 0; }
+  .myspot .by { font-size: 15px; } .myspot .by b { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--spot); }
+  .myspot .ago { text-align: right; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .myspot .det { grid-column: 1 / -1; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .myspot .det b { color: var(--text); font-weight: 600; }
+  .myspot.new { background: linear-gradient(90deg, rgba(255,79,163,.14), transparent 70%); border-radius: 8px; padding-left: 10px; }
+  .newtag { font-size: 10px; font-weight: 800; letter-spacing: .5px; background: #ff4fa3; color: #0b1117; border-radius: 4px; padding: 1px 5px; margin-left: 6px; vertical-align: 2px; }
+  .spotsum { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .spotsum span { background: var(--inset); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .spotsum b { color: var(--text); }
+  #mySpotsPanel.alerting { animation: spotalert 1.6s ease-in-out 3; }
+  @keyframes spotalert { 50% { box-shadow: 0 0 0 2px #ff4fa3, 0 0 22px -2px #ff4fa3; } }
+  @media (prefers-reduced-motion: reduce) { #mySpotsPanel.alerting { animation: none; box-shadow: 0 0 0 2px #ff4fa3; } }
+  .myempty { color: var(--muted); font-size: 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
   .warn { display: none; max-width: 1200px; margin: 0 auto 12px; background: #2a1714; border: 1px solid var(--poor);
     border-radius: 10px; padding: 10px 14px; font-size: 14px; }
   .warn.on { display: block; }
@@ -187,18 +215,19 @@
 <body>
 <header>
   <h1>Ham<span>Dash</span></h1>
-  <div class="vnum">v1.2.2</div>
+  <div class="vnum">v1.3.0</div>
   <div class="sub" id="updated">Loading…</div>
   <div class="sub vdate">10/25/2026</div>
 </header>
 
 <div class="setup" id="homeSetup" hidden>
   <div>
-    <b>Where's your station?</b>
-    <div class="sub">Enter your grid square. It's saved only in this browser, never in the page itself, so it stays private.</div>
+    <b>Set up your station</b>
+    <div class="sub">Enter your callsign and HamDash finds your grid square (US licenses). No callsign, or licensed outside the US? Enter your grid square. Saved only on this device.</div>
   </div>
   <form id="homeForm" class="setupform">
-    <input id="homeGrid" placeholder="FN20" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Grid square">
+    <input id="homeCall" class="callin" placeholder="Callsign" maxlength="14" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Callsign (optional)">
+    <input id="homeGrid" placeholder="Grid" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Grid square">
     <button type="submit" class="primary">Save</button>
     <button type="button" id="homeGeo">Use my location</button>
     <button type="button" id="homeCancel" hidden>Cancel</button>
@@ -211,6 +240,17 @@
 </div>
 
 <div class="grid">
+  <section class="panel full stationbox" id="stationBox" hidden>
+    <div class="who">
+      <div class="callsign" id="stCall"></div>
+      <div class="opline" id="stName"></div>
+    </div>
+    <div class="stgrid">
+      <span class="gridchip" id="stGrid"></span>
+      <button class="resetbtn" id="homeEdit">Change</button>
+    </div>
+    <div class="sub stnote" id="stNote" hidden></div>
+  </section>
   <section class="panel full">
     <div class="panelhead">
       <h2>Gray line &amp; sun position</h2>
@@ -219,7 +259,7 @@
     <canvas id="map" width="1440" height="720"></canvas>
     <div class="legend">
       <span><i style="background:#f2b33d"></i>Sun overhead</span>
-      <span><i style="background:#ff4fa3"></i>Home (<span id="homeLbl">not set</span>) <button class="linkbtn" id="homeEdit">Change</button></span>
+      <span><i style="background:#ff4fa3"></i>Home (<span id="homeLbl">not set</span>)</span>
       <span><i style="background:#c9a64b;opacity:.7"></i>Gray line</span>
       <span><i style="background:#02060c"></i>Night</span>
       <span>Pinch or scroll to zoom, drag to move</span>
@@ -255,6 +295,14 @@
       <span>Tap a dot for details · pinch or scroll to zoom, drag to move</span>
       <span class="actstatus" id="actStatus"></span>
     </div>
+  </section>
+
+  <section class="panel full" id="mySpotsPanel">
+    <div class="panelhead">
+      <h2>Your spots</h2>
+      <span class="sub" id="mySpotsSub"></span>
+    </div>
+    <div id="mySpots"></div>
   </section>
 
   <section class="panel full">
@@ -336,7 +384,8 @@ const HOME = { grid: "", lat: 39.8, lon: -98.6, unset: true };   // center of th
 function applyHome(grid) {
   const p = gridToLatLon(grid);
   if (!p) return false;
-  Object.assign(HOME, { grid: grid.toUpperCase(), lat: p.lat, lon: p.lon, unset: false });
+  grid = grid.trim();
+  Object.assign(HOME, { grid: grid.slice(0, 4).toUpperCase() + grid.slice(4).toLowerCase(), lat: p.lat, lon: p.lon, unset: false });   // standard style: FN20ir
   document.getElementById("homeLbl").textContent = HOME.grid;
   return true;
 }
@@ -706,6 +755,16 @@ const QUERIES = [
   HQ + "&cont=NA&bands=6M,2M,70CM",                      // VHF / UHF
 ];
 const lastResp = [];   // most recent answer to each query
+// spots of your own callsign, checked every other turn (about every 40 s)
+const MY_SPOT_HOURS = 12;
+const mySpots = new Map();
+let mySpotsLoaded = false, mySpotsOk = null, mySeen = new Set();
+function myCallsQuery() {
+  const b = baseCall(MY.call);
+  const variants = [b, ...["P", "M", "QRP", "MM", "AM", "R"].map(s => b + "/" + s)];
+  if (MY.call && !variants.includes(MY.call)) variants.unshift(MY.call);
+  return HQ + "&calls=" + encodeURIComponent(variants.slice(0, 30).join(","));
+}
 let qTurn = 0, potaOk = false, hamqthOk = false;
 const usLookups = new Set();
 
@@ -738,6 +797,13 @@ function ingestPOTA(list) {
     if (!band || isFT(freq, sp.mode, sp.comments) || sp.invalid || sp.latitude == null) continue;
     const t = new Date(sp.spotTime + (/Z$/.test(sp.spotTime) ? "" : "Z")).getTime();
     if (Date.now() - t > SPOT_WINDOW_MIN * 60000) continue;
+    if (MY.call && isMe(sp.activator)) {
+      const before = mySpots.size, by = (sp.spotter || "").toUpperCase().replace(/-#$/, "");
+      const g = usGrid(by), loc = g ? gridToLatLon(g) : null;
+      addMySpot({ by, t, freq, band, mode: guessMode(freq, sp.mode, sp.comments), note: sp.comments || "", loc,
+        dist: loc ? Math.round(miles(HOME, loc)) : null, src: "Parks on the Air" });
+      if (mySpots.size > before && mySpotsLoaded) { alertMySpots(); renderMySpots(); }
+    }
     addStation({ call: (sp.activator || "").toUpperCase(), band, freq, mode: guessMode(freq, sp.mode, sp.comments), t,
       loc: { lat: +sp.latitude, lon: +sp.longitude }, exact: true,
       where: `${sp.name || sp.reference} (${sp.reference}, ${sp.locationDesc})`, note: sp.comments || "",
@@ -752,12 +818,94 @@ function pruneAndRender() {
 }
 
 async function pollHamQTH() {
-  const i = qTurn++ % QUERIES.length;
+  if (MY.call && qTurn++ % 2 === 1) { pollMine(); return; }
+  const i = (pollHamQTH.n = (pollHamQTH.n || 0) + 1) % QUERIES.length;
   try { lastResp[i] = await getJSON(QUERIES[i]); ingestHamQTH(lastResp[i]); hamqthOk = true; markUpdated(); }
   catch (e) { hamqthOk = false; if (isFile) document.getElementById("fileWarn").classList.add("on"); if (!potaOk) actOk = false; }
   pruneAndRender();
   resolveUS();
 }
+async function pollMine() {
+  try {
+    const data = await getJSON(myCallsQuery());
+    ingestHamQTH(data);                       // so your signal shows on the activity map too
+    ingestMine(data); mySpotsOk = true; markUpdated();
+  } catch (e) { mySpotsOk = false; }
+  pruneAndRender(); renderMySpots(); resolveUS();
+}
+function spotterLoc(call, locs) {
+  const l = locs[call.toUpperCase()];
+  if (l && l.lat != null && l.source !== "dxcc") return { lat: +l.lat, lon: +l.lon };
+  const g = usGrid(call); if (g) return gridToLatLon(g);
+  if (l && l.lat != null) return { lat: +l.lat, lon: +l.lon, rough: true };
+  return null;
+}
+function addMySpot(sp) {
+  const key = sp.by + "|" + sp.t + "|" + Math.round(sp.freq);
+  if (mySpots.has(key)) return;
+  sp.isNew = mySpotsLoaded && !mySeen.has(key);
+  mySpots.set(key, sp);
+}
+function ingestMine(data) {
+  const locs = {};
+  for (const l of data.locations || []) locs[(l.call || "").toUpperCase()] = l;
+  let fresh = 0;
+  for (const s of data.spots || []) {
+    if (!isMe(s.dxcall)) continue;
+    const t = new Date(s.time).getTime(), freq = +s.freq;
+    if (Date.now() - t > MY_SPOT_HOURS * 3600e3) continue;
+    const by = (s.spotter || "").toUpperCase().replace(/-#$/, "");
+    const loc = spotterLoc(by, locs);
+    const before = mySpots.size;
+    addMySpot({ by, t, freq, band: bandOf(freq) || "", mode: guessMode(freq, s.mode, s.comment), note: s.comment || "",
+      loc, dist: loc ? Math.round(miles(HOME, loc)) : null, src: "DX cluster" });
+    if (mySpots.size > before && mySpotsLoaded) fresh++;
+  }
+  if (!mySpotsLoaded) { mySpotsLoaded = true; for (const k of mySpots.keys()) mySeen.add(k); }
+  else if (fresh) alertMySpots();
+}
+function alertMySpots() {
+  const p = document.getElementById("mySpotsPanel");
+  p.classList.remove("alerting"); void p.offsetWidth; p.classList.add("alerting");
+}
+function resetMySpots() {
+  mySpots.clear(); mySeen = new Set(); mySpotsLoaded = false; mySpotsOk = null;
+  renderMySpots();
+  if (MY.call) pollMine();
+}
+function renderMySpots() {
+  const box = document.getElementById("mySpots"), sub = document.getElementById("mySpotsSub");
+  const cut = Date.now() - MY_SPOT_HOURS * 3600e3;
+  for (const [k, s] of mySpots) if (s.t < cut) mySpots.delete(k);
+  if (!MY.call) {
+    sub.textContent = "";
+    box.innerHTML = `<div class="myempty">Add your callsign to see when other hams spot you on the air. <button class="resetbtn" id="mySpotsAdd">Add callsign</button></div>`;
+    document.getElementById("mySpotsAdd").onclick = () => openSetup(true);
+    return;
+  }
+  const list = [...mySpots.values()].sort((a, b) => b.t - a.t);
+  sub.textContent = list.length ? `${list.length} in the last ${MY_SPOT_HOURS} hours` : "";
+  if (!list.length) {
+    box.innerHTML = `<div class="myempty">${mySpotsOk === false ? `<span class="err">Couldn't check for spots of ${esc(MY.call)}. Retrying shortly.</span>`
+      : mySpotsOk === null ? "Checking for spots of " + esc(MY.call) + "…"
+      : `No spots of ${esc(MY.call)} in the last ${MY_SPOT_HOURS} hours. When someone posts you to a DX cluster or POTA, it'll show up here within a minute or so.`}</div>`;
+    return;
+  }
+  const far = list.filter(s => s.dist != null).sort((a, b) => b.dist - a.dist)[0];
+  const bands = [...new Set(list.map(s => s.band).filter(Boolean))];
+  const ago = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? "just now" : m < 60 ? m + " min ago" : Math.floor(m / 60) + " h " + (m % 60) + " min ago"; };
+  box.innerHTML = `<div class="spotsum">
+      ${bands.length ? `<span>Heard on <b>${bands.join(", ")}</b></span>` : ""}
+      ${far ? `<span>Farthest <b>${esc(far.by)}</b>, ${far.dist.toLocaleString()} mi</span>` : ""}
+    </div>` + list.slice(0, 10).map(s => `
+    <div class="myspot ${s.isNew ? "new" : ""}">
+      <div class="by"><b>${esc(s.by)}</b> spotted you${s.isNew ? `<span class="newtag">NEW</span>` : ""}</div>
+      <div class="ago" data-t="${s.t}">${ago(s.t)}</div>
+      <div class="det"><b>${s.band || "?"}</b> · ${(s.freq / 1000).toFixed(3)} MHz${s.mode ? " · " + s.mode : ""}${s.dist != null ? ` · ${s.loc && s.loc.rough ? "about " : ""}${s.dist.toLocaleString()} mi away` : ""}${s.src === "Parks on the Air" ? " · POTA" : ""}${s.note ? ` · “${esc(s.note.slice(0, 60))}”` : ""}</div>
+    </div>`).join("") + (list.length > 10 ? `<div class="sub" style="margin-top:6px">+ ${list.length - 10} earlier spots</div>` : "");
+}
+setInterval(() => { if (MY.call && mySpots.size) renderMySpots(); }, 60000);   // keep "min ago" current
+
 async function pollPOTA() {
   try { ingestPOTA(await getJSON("https://api.pota.app/spot/activator")); potaOk = true; markUpdated(); }
   catch (e) { potaOk = false; }
@@ -887,6 +1035,13 @@ function frame(now) {
     ctx.fillStyle = "#0b1117"; ctx.fillText(c.items.length, c.x, c.y + 0.5);
   }
   drawHome(ctx, projector(V, 1440, 720));   // home stays on top of nearby activity
+  if (MY.call) for (const c of clusters) if (c.items.some(s => isMe(s.call))) {
+    ctx.strokeStyle = "#ff4fa3"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(c.x, c.y, 20, 0, 7); ctx.stroke();
+    ctx.font = "700 18px -apple-system, Segoe UI, sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.lineWidth = 5; ctx.strokeStyle = "rgba(0,0,0,.75)"; ctx.strokeText("You", c.x + 24, c.y);
+    ctx.fillStyle = "#ffd1e8"; ctx.fillText("You", c.x + 24, c.y);
+    ctx.textAlign = "center";
+  }
   if (!clusters.length && actOk) {
     ctx.fillStyle = "rgba(11,17,23,.75)"; ctx.fillRect(470, 330, 500, 60);
     ctx.fillStyle = "#c5d1dc"; ctx.font = "600 20px -apple-system, Segoe UI, sans-serif";
@@ -1124,30 +1279,94 @@ function latLonToGrid(lat, lon) {
     Math.floor((lon % 20) / 2) + Math.floor(lat % 10) +
     A[Math.floor((lon % 2) * 12)].toLowerCase() + A[Math.floor((lat % 1) * 24)].toLowerCase();
 }
-const setupEl = document.getElementById("homeSetup"), gridIn = document.getElementById("homeGrid"), homeErr = document.getElementById("homeErr");
+const setupEl = document.getElementById("homeSetup"), gridIn = document.getElementById("homeGrid"),
+  callIn = document.getElementById("homeCall"), homeErr = document.getElementById("homeErr");
+// Your callsign details: kept only in this browser. The street address from the FCC record is never stored or shown.
+let MY = { call: "", name: "", cls: "", club: false, fromFcc: false };
+try { MY = { ...MY, ...JSON.parse(localStorage.getItem("hamdash.station") || "{}") }; } catch {}
+const baseCall = c => (c || "").toUpperCase().split("/").filter(p => /\d/.test(p)).sort((a, b) => b.length - a.length)[0] || (c || "").toUpperCase();
+const isMe = c => !!MY.call && baseCall(c) === baseCall(MY.call);
+const titleCase = s => (s || "").toLowerCase().replace(/\b[a-z]/g, m => m.toUpperCase());
+const CLASSES = { TECHNICIAN: "Technician", GENERAL: "General", EXTRA: "Amateur Extra", ADVANCED: "Advanced", NOVICE: "Novice" };
+
 function openSetup(canCancel) {
   setupEl.hidden = false; homeErr.textContent = "";
   gridIn.value = HOME.unset ? "" : HOME.grid;
+  callIn.value = MY.call || "";
   document.getElementById("homeCancel").hidden = !canCancel;
-  gridIn.focus();
+  setupEl.scrollIntoView({ block: "nearest" });
+  (MY.call || HOME.unset ? callIn : gridIn).focus();
 }
-function saveHome(grid) {
-  grid = grid.trim();
-  if (!/^[A-Ra-r]{2}\d{2}([A-Xa-x]{2})?$/.test(grid)) { homeErr.textContent = "That doesn't look like a grid square. Use 4 or 6 characters, like FN20 or FN20xr."; return; }
+function useHome(grid) {
   applyHome(grid);
   try { localStorage.setItem("hamdash.home", HOME.grid); } catch {}
-  setupEl.hidden = true;
   for (const s of stations.values()) s.dist = Math.round(miles(HOME, s.loc));
   drawGrayMap(); rebuildActBase(); drawClocks(); renderActivity(); loadWeather(); computePasses(); drawSatMap();
 }
-document.getElementById("homeForm").onsubmit = e => { e.preventDefault(); saveHome(gridIn.value); };
+const GRID_RE = /^[A-Ra-r]{2}\d{2}([A-Xa-x]{2})?$/;
+async function saveSetup() {
+  const call = callIn.value.trim().toUpperCase().replace(/\s+/g, "");
+  let grid = gridIn.value.trim();
+  homeErr.textContent = "";
+  if (!call && !grid) { homeErr.textContent = "Enter your callsign, your grid square, or both."; return; }
+  if (call && !/^[A-Z0-9\/]{3,14}$/.test(call) || call && !/\d/.test(call)) { homeErr.textContent = "That doesn't look like a callsign. Check it and try again."; return; }
+  if (grid && !GRID_RE.test(grid)) { homeErr.textContent = "That doesn't look like a grid square. Use 4 or 6 characters, like FN20 or FN20xr."; return; }
+  const next = { call, name: "", cls: "", club: false, fromFcc: false };
+  if (call) {
+    if (call === MY.call && MY.name) { Object.assign(next, { name: MY.name, cls: MY.cls, club: MY.club }); }
+    else {
+      homeErr.textContent = "Looking up " + call + "…";
+      try {
+        const j = await getJSON("https://callook.info/" + encodeURIComponent(baseCall(call)) + "/json");
+        if (j.status === "VALID") {
+          next.name = titleCase(j.name);
+          next.club = j.type === "CLUB";
+          next.cls = next.club ? "Club station" : (CLASSES[(j.current && j.current.operClass) || ""] || "");
+          const fccGrid = j.location && j.location.gridsquare;
+          if (!grid && fccGrid && GRID_RE.test(fccGrid)) { grid = fccGrid; next.fromFcc = true; }
+        } else if (!grid) {
+          homeErr.textContent = `Couldn't find ${call} in the FCC database (US licenses only). Add your grid square and tap Save.`;
+          gridIn.focus(); return;
+        }
+      } catch {
+        if (!grid) { homeErr.textContent = "Couldn't reach the callsign lookup. Add your grid square, or try again in a minute."; return; }
+      }
+    }
+    if (!next.fromFcc && call === MY.call && grid.toUpperCase() === HOME.grid.toUpperCase()) next.fromFcc = MY.fromFcc;
+  }
+  if (!grid) { homeErr.textContent = "Add your grid square and tap Save."; return; }
+  homeErr.textContent = "";
+  const callChanged = call !== MY.call;
+  MY = next;
+  try { localStorage.setItem("hamdash.station", JSON.stringify(MY)); } catch {}
+  setupEl.hidden = true;
+  useHome(grid);
+  renderStation();
+  if (callChanged) resetMySpots();
+}
+function renderStation() {
+  const box = document.getElementById("stationBox");
+  if (HOME.unset) { box.hidden = true; return; }
+  box.hidden = false;
+  const c = document.getElementById("stCall");
+  if (MY.call) { c.textContent = MY.call; c.className = "callsign"; }
+  else { c.textContent = "Your station"; c.className = "callsign nocall"; }
+  document.getElementById("stName").innerHTML = MY.call
+    ? (MY.name ? `${esc(MY.name)}${MY.cls ? ` <span class="cls">· ${esc(MY.cls)}</span>` : ""}` : `<span class="cls">Licensed outside the US, or not in the FCC database</span>`)
+    : `<span class="cls">Add your callsign to see your name and when others spot you.</span>`;
+  document.getElementById("stGrid").textContent = HOME.grid;
+  const note = document.getElementById("stNote");
+  note.hidden = !MY.fromFcc;
+  note.textContent = "Grid square found from the mailing address on your FCC license. If your station is somewhere else, tap Change.";
+}
+document.getElementById("homeForm").onsubmit = e => { e.preventDefault(); saveSetup(); };
 document.getElementById("homeEdit").onclick = () => openSetup(true);
 document.getElementById("homeCancel").onclick = () => { setupEl.hidden = true; };
 document.getElementById("homeGeo").onclick = () => {
   if (!navigator.geolocation) { homeErr.textContent = "This browser can't share your location. Type your grid square instead."; return; }
   homeErr.textContent = "Finding your location…";
   navigator.geolocation.getCurrentPosition(
-    pos => { gridIn.value = latLonToGrid(pos.coords.latitude, pos.coords.longitude); homeErr.textContent = ""; saveHome(gridIn.value); },
+    pos => { gridIn.value = latLonToGrid(pos.coords.latitude, pos.coords.longitude); homeErr.textContent = ""; saveSetup(); },
     () => { homeErr.textContent = "Couldn't get your location. Type your grid square instead."; },
     { timeout: 10000 });
 };
@@ -1558,6 +1777,7 @@ loadGeo();
 loadSolar(); setInterval(loadSolar, 10 * 60000);
 loadWeather(); setInterval(loadWeather, 10 * 60000);
 showSatReset(); rebuildSatBase(); drawSatMap(); renderPasses();
+renderStation(); renderMySpots();
 initSats(); setInterval(initSats, 10 * 60000);           // re-check orbits (cached 12 h) and recompute passes
 setInterval(() => { drawSatMap(); tickPasses(); }, 1000);
 setInterval(rebuildSatBase, 60000);                      // keep the night shading current
