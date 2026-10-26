@@ -219,7 +219,7 @@
 <body>
 <header>
   <h1>Ham<span>Dash</span></h1>
-  <div class="vnum">v1.3.3</div>
+  <div class="vnum">v1.3.4</div>
   <div class="sub" id="updated">Loading…</div>
   <div class="sub vdate">10/25/2026</div>
 </header>
@@ -385,12 +385,7 @@ function applyHome(grid) {
   document.getElementById("homeLbl").textContent = HOME.grid;
   return true;
 }
-const ZONES = [
-  { label: "London",  tz: "Europe/London" },
-  { label: "Berlin",  tz: "Europe/Berlin" },
-  { label: "Tokyo",   tz: "Asia/Tokyo" },
-  { label: "Sydney",  tz: "Australia/Sydney" },
-];
+const ZONES = [];   // extra world clocks (city name + time zone) can be added here
 const SPOT_WINDOW_MIN = 30;    // how long a station stays on the map
 const DX_MILES = 3000;         // "DX" distance
 const DX_OPEN = 5;             // DX stations needed to tag a band as open
