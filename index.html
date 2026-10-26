@@ -219,7 +219,7 @@
 <body>
 <header>
   <h1>Ham<span>Dash</span></h1>
-  <div class="vnum">v1.3.1</div>
+  <div class="vnum">v1.3.2</div>
   <div class="sub" id="updated">Loading…</div>
   <div class="sub vdate">10/25/2026</div>
 </header>
@@ -253,7 +253,6 @@
       <span class="gridchip" id="stGrid"></span>
       <button class="resetbtn" id="homeEdit">Change</button>
     </div>
-    <div class="sub stnote" id="stNote" hidden></div>
   </section>
   <section class="panel full">
     <div class="panelhead">
@@ -1359,9 +1358,6 @@ function renderStation() {
     ? (MY.name ? `${esc(MY.name)}${MY.cls ? ` <span class="cls">· ${esc(MY.cls)}</span>` : ""}` : `<span class="cls">Licensed outside the US, or not in the FCC database</span>`)
     : `<span class="cls">Add your callsign to see your name and when others spot you.</span>`;
   document.getElementById("stGrid").textContent = HOME.grid;
-  const note = document.getElementById("stNote");
-  note.hidden = !MY.fromFcc;
-  note.textContent = "Grid square found from the mailing address on your FCC license. If your station is somewhere else, tap Change.";
 }
 document.getElementById("homeForm").onsubmit = e => { e.preventDefault(); saveSetup(); };
 document.getElementById("homeEdit").onclick = () => openSetup(true);
