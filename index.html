@@ -219,7 +219,7 @@
 <body>
 <header>
   <h1>Ham<span>Dash</span></h1>
-  <div class="vnum">v1.3.2</div>
+  <div class="vnum">v1.3.3</div>
   <div class="sub" id="updated">Loading…</div>
   <div class="sub vdate">10/25/2026</div>
 </header>
@@ -300,13 +300,6 @@
     </div>
   </section>
 
-  <section class="panel full" id="mySpotsPanel">
-    <div class="panelhead">
-      <h2>Your spots</h2>
-      <span class="sub" id="mySpotsSub"></span>
-    </div>
-    <div id="mySpots"></div>
-  </section>
 
   <section class="panel full">
     <h2>Solar conditions</h2>
@@ -759,6 +752,7 @@ const QUERIES = [
 ];
 const lastResp = [];   // most recent answer to each query
 // spots of your own callsign, checked every other turn (about every 40 s)
+const SHOW_MY_SPOTS = false;   // "Your spots" box is parked for now; it returns with the POTA boxes
 const MY_SPOT_HOURS = 12;
 const mySpots = new Map();
 let mySpotsLoaded = false, mySpotsOk = null, mySeen = new Set();
@@ -800,7 +794,7 @@ function ingestPOTA(list) {
     if (!band || isFT(freq, sp.mode, sp.comments) || sp.invalid || sp.latitude == null) continue;
     const t = new Date(sp.spotTime + (/Z$/.test(sp.spotTime) ? "" : "Z")).getTime();
     if (Date.now() - t > SPOT_WINDOW_MIN * 60000) continue;
-    if (MY.call && isMe(sp.activator)) {
+    if (SHOW_MY_SPOTS && MY.call && isMe(sp.activator)) {
       const before = mySpots.size, by = (sp.spotter || "").toUpperCase().replace(/-#$/, "");
       const g = usGrid(by), loc = g ? gridToLatLon(g) : null;
       addMySpot({ by, t, freq, band, mode: guessMode(freq, sp.mode, sp.comments), note: sp.comments || "", loc,
@@ -821,7 +815,7 @@ function pruneAndRender() {
 }
 
 async function pollHamQTH() {
-  if (MY.call && qTurn++ % 2 === 1) { pollMine(); return; }
+  if (SHOW_MY_SPOTS && MY.call && qTurn++ % 2 === 1) { pollMine(); return; }
   const i = (pollHamQTH.n = (pollHamQTH.n || 0) + 1) % QUERIES.length;
   try { lastResp[i] = await getJSON(QUERIES[i]); ingestHamQTH(lastResp[i]); hamqthOk = true; markUpdated(); }
   catch (e) { hamqthOk = false; if (isFile) document.getElementById("fileWarn").classList.add("on"); if (!potaOk) actOk = false; }
@@ -868,15 +862,17 @@ function ingestMine(data) {
   else if (fresh) alertMySpots();
 }
 function alertMySpots() {
+  if (!SHOW_MY_SPOTS) return;
   const p = document.getElementById("mySpotsPanel");
   p.classList.remove("alerting"); void p.offsetWidth; p.classList.add("alerting");
 }
 function resetMySpots() {
   mySpots.clear(); mySeen = new Set(); mySpotsLoaded = false; mySpotsOk = null;
   renderMySpots();
-  if (MY.call) pollMine();
+  if (SHOW_MY_SPOTS && MY.call) pollMine();
 }
 function renderMySpots() {
+  if (!SHOW_MY_SPOTS) return;
   const box = document.getElementById("mySpots"), sub = document.getElementById("mySpotsSub");
   const cut = Date.now() - MY_SPOT_HOURS * 3600e3;
   for (const [k, s] of mySpots) if (s.t < cut) mySpots.delete(k);
@@ -1038,7 +1034,7 @@ function frame(now) {
     ctx.fillStyle = "#0b1117"; ctx.fillText(c.items.length, c.x, c.y + 0.5);
   }
   drawHome(ctx, projector(V, 1440, 720));   // home stays on top of nearby activity
-  if (MY.call) for (const c of clusters) if (c.items.some(s => isMe(s.call))) {
+  if (SHOW_MY_SPOTS && MY.call) for (const c of clusters) if (c.items.some(s => isMe(s.call))) {
     ctx.strokeStyle = "#ff4fa3"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(c.x, c.y, 20, 0, 7); ctx.stroke();
     ctx.font = "700 18px -apple-system, Segoe UI, sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
     ctx.lineWidth = 5; ctx.strokeStyle = "rgba(0,0,0,.75)"; ctx.strokeText("You", c.x + 24, c.y);
@@ -1356,7 +1352,7 @@ function renderStation() {
   else { c.textContent = "Your station"; c.className = "callsign nocall"; }
   document.getElementById("stName").innerHTML = MY.call
     ? (MY.name ? `${esc(MY.name)}${MY.cls ? ` <span class="cls">· ${esc(MY.cls)}</span>` : ""}` : `<span class="cls">Licensed outside the US, or not in the FCC database</span>`)
-    : `<span class="cls">Add your callsign to see your name and when others spot you.</span>`;
+    : `<span class="cls">Add your callsign to show it here.</span>`;
   document.getElementById("stGrid").textContent = HOME.grid;
 }
 document.getElementById("homeForm").onsubmit = e => { e.preventDefault(); saveSetup(); };
