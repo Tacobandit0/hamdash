@@ -207,7 +207,14 @@
   .tapinfo a.call:hover { text-decoration: underline; }
   .tapinfo .callwrap { display: inline-flex; align-items: center; gap: 8px; }
   .qrzbtn { font: 700 12px/1 inherit; font-family: inherit; color: var(--text); text-decoration: none; background: var(--panel);
-    border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; white-space: nowrap; }
+    border: 1px solid var(--line); border-radius: 999px; padding: 7px 11px; white-space: nowrap; cursor: pointer; }
+  .qrzbtn[aria-expanded="true"] { border-color: var(--spot); color: var(--spot); }
+  .opcard { margin-top: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .opcard .opname { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
+  .opcard dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; margin: 0 0 8px; font-size: 14px; }
+  .opcard dt { color: var(--muted); } .opcard dd { margin: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .opcard .sub { margin-bottom: 8px; }
+  .qrzlink { font-size: 13px; color: var(--accent); }
   .qrzbtn:hover, .qrzbtn:focus-visible { border-color: var(--spot); color: var(--spot); outline: none; }
   .tapinfo .freq { font: 600 15px ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
   .tapinfo .where { color: var(--muted); font-size: 14px; margin-top: 2px; overflow-wrap: anywhere; }
@@ -224,7 +231,7 @@
 <body>
 <header>
   <h1>Ham<span>Dash</span></h1>
-  <div class="vnum">v1.4.0</div>
+  <div class="vnum">v1.4.1</div>
   <div class="sub" id="updated">Loading…</div>
   <div class="sub vdate">10/25/2026</div>
 </header>
@@ -1088,6 +1095,56 @@ function showTip(ev) {
 // Info panel under the map: stays open until the same dot is tapped again or Close is pressed
 // QRZ page for a callsign; portable add-ons like /P or a country prefix are dropped so it lands on the operator's page
 const qrzUrl = call => "https://www.qrz.com/db/" + encodeURIComponent(baseCall(call));
+// Operator info shown right in the panel, from the public FCC license database (US calls) via callook.info.
+// Street addresses are left out on purpose; city and state are enough to place a station.
+const opInfo = new Map();          // base call -> { state: "loading" | "ok" | "notfound" | "error", ... }
+const infoOpen = new Set();
+const CLASS_NAMES = { TECHNICIAN: "Technician", GENERAL: "General", EXTRA: "Amateur Extra", ADVANCED: "Advanced", NOVICE: "Novice" };
+async function toggleOpInfo(call) {
+  const b = baseCall(call);
+  if (infoOpen.has(b)) { infoOpen.delete(b); renderTapInfo(); return; }
+  infoOpen.add(b);
+  if (!opInfo.has(b) || opInfo.get(b).state === "error") {
+    opInfo.set(b, { state: "loading" }); renderTapInfo();
+    try {
+      const j = await getJSON("https://callook.info/" + encodeURIComponent(b) + "/json");
+      if (j.status !== "VALID") opInfo.set(b, { state: "notfound" });
+      else {
+        const line2 = (j.address && j.address.line2) || "";
+        const m = line2.match(/^(.*?),\s*([A-Z]{2})\s+\d{5}/);
+        const g = j.location && j.location.gridsquare;
+        if (g && !callCache[b]) { callCache[b] = g.slice(0, 6); saveCallCache(); }
+        opInfo.set(b, { state: "ok", name: titleCase(j.name), club: j.type === "CLUB",
+          cls: j.type === "CLUB" ? "Club station" : (CLASS_NAMES[(j.current && j.current.operClass) || ""] || ""),
+          trustee: j.trustee && j.trustee.callsign, city: m ? titleCase(m[1]) + ", " + m[2] : titleCase(line2.replace(/\s+\d{5}(-\d{4})?$/, "")),
+          grid: g || "", granted: j.otherInfo && j.otherInfo.grantDate, previous: j.previous && j.previous.callsign });
+      }
+    } catch { opInfo.set(b, { state: "error" }); }
+  }
+  renderTapInfo();
+}
+function bearingTo(p) {
+  const φ1 = rad(HOME.lat), φ2 = rad(p.lat), Δλ = rad(p.lon - HOME.lon);
+  return (deg(Math.atan2(Math.sin(Δλ) * Math.cos(φ2), Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ))) + 360) % 360;
+}
+function opCard(s) {
+  const b = baseCall(s.call), i = opInfo.get(b) || { state: "loading" };
+  const qrz = `<a class="qrzlink" href="${qrzUrl(s.call)}" target="_blank" rel="noopener">Full QRZ page ↗</a>`;
+  if (i.state === "loading") return `<div class="opcard"><div class="sub">Looking up ${esc(b)}…</div></div>`;
+  if (i.state === "error") return `<div class="opcard"><div class="sub">Couldn't reach the callsign lookup. Tap Hide info, then try again.</div>${qrz}</div>`;
+  if (i.state === "notfound") return `<div class="opcard"><div class="sub">${esc(b)} isn't in the FCC database, so it's likely licensed outside the US.</div>${qrz}</div>`;
+  const brg = Math.round(bearingTo(s.loc));
+  const rows = [
+    ["Class", i.cls], i.trustee ? ["Trustee", i.trustee] : null, ["Location", i.city], ["Grid", i.grid],
+    ["Beam heading", `${brg}° ${compass(brg)} · long path ${(brg + 180) % 360}°`],
+    i.granted ? ["Licensed", i.granted] : null, i.previous ? ["Previous call", i.previous] : null,
+  ].filter(r => r && r[1]);
+  return `<div class="opcard">
+    <div class="opname">${esc(i.name || b)}</div>
+    <dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
+    ${qrz}
+  </div>`;
+}
 function renderTapInfo() {
   const panel = document.getElementById("tapInfo");
   const c = selectedCluster();
@@ -1097,10 +1154,12 @@ function renderTapInfo() {
       <button class="ticlose" id="tiClose">Close</button></div>
     <div class="tilist">${c.items.map(s => `
       <div class="tistation">
-        <div class="tirow"><span class="callwrap"><a class="call" href="${qrzUrl(s.call)}" target="_blank" rel="noopener">${esc(s.call)}</a><a class="qrzbtn" href="${qrzUrl(s.call)}" target="_blank" rel="noopener" aria-label="Look up ${esc(s.call)} on QRZ">QRZ ↗</a></span><span class="freq">${s.band} · ${(s.freq / 1000).toFixed(3)} MHz${s.mode ? " · " + s.mode : ""}</span></div>
+        <div class="tirow"><span class="callwrap"><span class="call">${esc(s.call)}</span><button class="qrzbtn" data-call="${esc(s.call)}" aria-expanded="${infoOpen.has(baseCall(s.call))}">${infoOpen.has(baseCall(s.call)) ? "Hide info" : "Operator info"}</button></span><span class="freq">${s.band} · ${(s.freq / 1000).toFixed(3)} MHz${s.mode ? " · " + s.mode : ""}</span></div>
         <div class="where">${esc(s.where || "")}${s.src === "Parks on the Air" ? " · POTA" : ""}</div>
         <div class="where">${s.dist.toLocaleString()} mi away · spotted ${ago(s)}${s.by ? " by " + esc(s.by) : ""}</div>
+        ${infoOpen.has(baseCall(s.call)) ? opCard(s) : ""}
       </div>`).join("")}</div>`;
+  panel.querySelectorAll(".qrzbtn").forEach(b => b.onclick = () => toggleOpInfo(b.dataset.call));
   panel.hidden = false;
   document.getElementById("tiClose").onclick = () => { selectedKey = null; renderTapInfo(); };
 }
