@@ -347,7 +347,17 @@
   #potamap { cursor: grab; touch-action: none; } #potamap:active { cursor: grabbing; }
   .potatip { border-color: var(--good); }
   .potatip .pc { font-weight: 700; color: var(--good); font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
-  .potahead { display: flex; align-items: center; gap: 10px; }
+  .potalegend { flex-wrap: nowrap; overflow: hidden; white-space: nowrap; }
+  .potafold { display: flex; align-items: center; gap: 8px; width: 100%; background: none; border: 0; border-top: 1px solid var(--line);
+    margin-top: 10px; padding: 10px 2px 2px; color: var(--muted); font: 700 12px/1 inherit; font-family: inherit; letter-spacing: .6px;
+    text-transform: uppercase; cursor: pointer; text-align: left; }
+  .potafold .fcount { background: var(--inset); border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; color: var(--text);
+    letter-spacing: 0; font-variant-numeric: tabular-nums; }
+  .potafold .fcount:empty { display: none; }
+  .potafold .chev { margin-left: auto; }
+  .potafold:hover { color: var(--text); }
+  .psched[hidden] { display: none; }
+  .psched { margin-top: 8px; }
   #potaList { margin-top: 10px; }
   .tapinfo { margin-top: 8px; background: var(--inset); border: 1px solid var(--spot); border-radius: 10px; padding: 10px 12px; font-size: 15px; }
   .tapinfo[hidden] { display: none; }
@@ -385,7 +395,7 @@
 <body>
 <header>
   <h1>Ham<span>Dash</span></h1>
-  <div class="vnum">v1.10.2</div>
+  <div class="vnum">v1.11.0</div>
   <div class="sub" id="updated">Loading…</div>
   <div class="sub vdate">10/26/2026</div>
 </header>
@@ -548,22 +558,28 @@
   <section class="panel full" id="potaPanel">
     <div class="panelhead">
       <h2>POTA</h2>
-      <div class="potahead"><span class="sub" id="potaCount"></span><button class="resetbtn" id="potaReset" hidden>Reset view</button></div>
+      <div class="seg" id="potaSeg">
+        <button data-v="world">World</button>
+        <button data-v="na">North America</button>
+        <button data-v="ne">Northeast</button>
+      </div>
     </div>
     <div class="chips" id="potaChips"></div>
     <div class="mapwrap">
       <canvas id="potamap" width="1440" height="720" aria-label="Map of park activators on the air"></canvas>
       <div class="tip potatip" id="potaTip"></div>
     </div>
-    <div class="legend">
-      <span><i style="background:var(--good);box-shadow:0 0 6px var(--good)"></i>Park activator on the air (brighter = more recent)</span>
+    <div class="legend potalegend">
+      <span><i style="background:var(--good);box-shadow:0 0 6px var(--good)"></i>Park</span>
       <span><i style="background:#ff4fa3"></i>Home</span>
-      <span>Tap a dot to open it below · pinch or scroll to zoom, drag to move</span>
+      <span>Tap a dot for details · pinch to zoom</span>
     </div>
     <div class="satlist" id="potaList"><div class="satempty">Checking who's on the air from parks…</div></div>
     <button class="morebtn" id="potaMore" hidden></button>
-    <div class="potasub">Coming up near you</div>
-    <div class="psched" id="potaSched"><div class="satempty">Checking scheduled activations…</div></div>
+    <button type="button" class="potafold" id="potaSchedBtn" aria-expanded="false" aria-controls="potaSched">
+      <span>Coming up near you</span><span class="fcount" id="potaSchedCount"></span><span class="chev">▼</span>
+    </button>
+    <div class="psched" id="potaSched" hidden><div class="satempty">Checking scheduled activations…</div></div>
     <div class="myspotsbar" id="mySpotsPanel"><div id="mySpots"></div></div>
   </section>
 
@@ -1875,7 +1891,7 @@ let potaSpots = null, potaSoon = null, potaSchedOk = null;
 let potaBand = "all", potaMode = "all", potaOpen = null, potaShowAll = false;
 try { potaBand = localStorage.getItem("hamdash.potaband") || "all"; potaMode = localStorage.getItem("hamdash.potamode") || "all"; } catch {}
 const parkCache = (() => { try { return JSON.parse(localStorage.getItem("hamdash.parks") || "{}"); } catch { return {}; } })();
-const POTA_NEAR_MI = 300, POTA_ROWS = 8;
+const POTA_NEAR_MI = 300, POTA_ROWS = 5;
 const potaModeCat = m => m === "CW" ? "CW" : m === "SSB" ? "SSB" : "Other";
 const potaAgo = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? "just now" : m < 60 ? m + " min ago" : Math.floor(m / 60) + " h " + (m % 60) + " min ago"; };
 function potaRows() {
@@ -1894,7 +1910,6 @@ function renderPOTA() {
   potaRecluster();
   const listEl = document.getElementById("potaList"), more = document.getElementById("potaMore");
   const all = potaRows();
-  document.getElementById("potaCount").textContent = potaSpots ? `${all.length} on the air` : "";
   // chips: bands that have someone on them (plus the chosen one), then modes
   const byMode = all.filter(r => potaMode === "all" || potaModeCat(r.mode) === potaMode);
   const counts = {}; for (const r of byMode) counts[r.band] = (counts[r.band] || 0) + 1;
@@ -1996,8 +2011,9 @@ function potaRecluster() {
     if (c) c.items.push(r); else potaClusters.push({ x, y, items: [r], seed: Math.random() * 10 });
   }
   for (const c of potaClusters) c.newest = Math.max(...c.items.map(r => r.t));
-  const d = VIEWS.na;
-  document.getElementById("potaReset").hidden = Math.abs(PV.lon0 - d.lon0) < .01 && Math.abs(PV.lon1 - d.lon1) < .01 && Math.abs(PV.lat1 - d.lat1) < .01;
+  // light up World / North America / Northeast when the map is showing exactly that view
+  const same = d => Math.abs(PV.lon0 - d.lon0) < .01 && Math.abs(PV.lon1 - d.lon1) < .01 && Math.abs(PV.lat1 - d.lat1) < .01;
+  document.querySelectorAll("#potaSeg button").forEach(b => b.classList.toggle("on", same(VIEWS[b.dataset.v])));
 }
 function potaFrame(now) {
   if (!potaVisible || document.hidden) { potaLooping = false; return; }
@@ -2114,10 +2130,23 @@ const potaPZ = attachPanZoom(potaCanvas, {
   onTap: potaTap,
   onDrag: () => { potaTipEl.style.display = "none"; },
 });
-document.getElementById("potaReset").onclick = () => {
-  PV = { ...VIEWS.na }; try { localStorage.removeItem("hamdash.potabox"); } catch {}
+document.querySelectorAll("#potaSeg button").forEach(b => b.onclick = () => {
+  PV = { ...VIEWS[b.dataset.v] };
+  try { localStorage.setItem("hamdash.potabox", JSON.stringify(PV)); } catch {}
   rebuildPotaBase(); potaRecluster();
-};
+});
+// "Coming up near you" opens and closes; the choice is remembered
+let potaSchedOpen = false;
+try { potaSchedOpen = localStorage.getItem("hamdash.potasched") === "1"; } catch {}
+function setPotaSched(open) {
+  potaSchedOpen = open;
+  document.getElementById("potaSched").hidden = !open;
+  const btn = document.getElementById("potaSchedBtn");
+  btn.setAttribute("aria-expanded", open); btn.querySelector(".chev").textContent = open ? "▲" : "▼";
+  try { localStorage.setItem("hamdash.potasched", open ? "1" : "0"); } catch {}
+}
+document.getElementById("potaSchedBtn").onclick = () => setPotaSched(!potaSchedOpen);
+setPotaSched(potaSchedOpen);
 rebuildPotaBase();
 
 // Scheduled activations in the next two days, within POTA_NEAR_MI of home
@@ -2144,6 +2173,7 @@ function renderPotaSched() {
   const now = Date.now();
   const near = potaSoon.map(a => { const c = parkCache[a.reference]; return { ...a, dist: Math.round(miles(HOME, { lat: c[0], lon: c[1] })) }; })
     .filter(a => a.dist <= POTA_NEAR_MI && a.end > now).sort((a, b) => a.start - b.start).slice(0, 4);
+  document.getElementById("potaSchedCount").textContent = near.length || "";
   if (!near.length) { el.innerHTML = `<div class="satempty">No activations scheduled within ${POTA_NEAR_MI} miles in the next 2 days.</div>`; return; }
   const when = t => t <= now ? "Now" : new Date(t).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" });
   el.innerHTML = near.map(a => `<div class="ps ${a.start <= now ? "now" : ""}">
