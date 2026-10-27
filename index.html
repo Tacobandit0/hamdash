@@ -247,6 +247,16 @@
   .swoutlook td:first-child, .swoutlook th:first-child { text-align: left; }
   .gtag { display: inline-block; min-width: 28px; border-radius: 4px; padding: 1px 5px; font-weight: 700; font-size: 12px; color: #0b1117; background: var(--good); }
   .gtag.g1 { background: var(--fair); } .gtag.g2 { background: var(--poor); }
+  button.gtag { border: 0; font-family: inherit; line-height: inherit; cursor: help; }
+  button.gtag:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+  .z0 { position: relative; display: inline-block; }
+  .z0::after { content: ""; position: absolute; left: 50%; top: 18%; bottom: 18%; width: 1.5px; background: currentColor; transform: translateX(-50%) rotate(28deg); }
+  .gtip { position: fixed; z-index: 50; max-width: 250px; background: #e3eaf1; color: #0b1117; border-radius: 8px; padding: 8px 10px;
+    font-size: 12.5px; line-height: 1.35; box-shadow: 0 6px 20px rgba(0,0,0,.45); pointer-events: none; opacity: 0; transition: opacity .12s; }
+  .gtip.on { opacity: 1; }
+  .gtip b { display: block; margin-bottom: 2px; }
+  .gtip::after { content: ""; position: absolute; left: var(--ax, 50%); top: 100%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: #e3eaf1; }
+  .gtip.below::after { top: auto; bottom: 100%; border-top-color: transparent; border-bottom-color: #e3eaf1; }
   .swsun img { width: 100%; max-width: 220px; height: auto; aspect-ratio: 1; border-radius: 50%; display: block; background: #000; margin: 0 auto 8px; }
   .swsun .chips { margin-bottom: 4px; justify-content: center; }
   .swsun .sub { font-size: 12px; text-align: center; }
@@ -314,7 +324,7 @@
 <body>
 <header>
   <h1>Ham<span>Dash</span></h1>
-  <div class="vnum">v1.8.3</div>
+  <div class="vnum">v1.8.4</div>
   <div class="sub" id="updated">Loading…</div>
   <div class="sub vdate">10/26/2026</div>
 </header>
@@ -986,6 +996,42 @@ function renderSwReadout() {
   const pb = document.getElementById("swPlan");
   if (pb) pb.onclick = () => planPropDay(t, a.sfi);
 }
+// NOAA geomagnetic storm scale, explained for HF operators (shown when hovering or tapping a G tag)
+const G_INFO = [
+  ["G0 · No storm", "Kp below 5. The ionosphere is quiet to unsettled, so HF paths should be stable."],
+  ["G1 · Minor storm", "Kp 5. Some fading on high-latitude paths, like Europe and Japan. Auroras in Canada."],
+  ["G2 · Moderate storm", "Kp 6. HF fades at higher latitudes and the high bands get weaker. Auroras as far south as New York."],
+  ["G3 · Strong storm", "Kp 7. HF is patchy and polar paths drop out. Auroras as far south as Pennsylvania."],
+  ["G4 · Severe storm", "Kp 8. HF is sporadic for hours. Auroras as far south as Alabama."],
+  ["G5 · Extreme storm", "Kp 9. HF can be blacked out for a day or two."],
+];
+// One shared tooltip: hover on PC, tap on iPhone (tap again or anywhere else to close)
+const gTipEl = Object.assign(document.createElement("div"), { className: "gtip" });
+gTipEl.setAttribute("role", "tooltip"); document.body.appendChild(gTipEl);
+let gTipFor = null;
+function showGTip(el) {
+  gTipFor = el;
+  gTipEl.innerHTML = `<b>${el.dataset.tipTitle.replace(/^G0/, 'G<span class="z0">0</span>')}</b>${el.dataset.tip}`;
+  gTipEl.classList.remove("below"); gTipEl.style.left = "0px"; gTipEl.style.top = "0px";
+  const r = el.getBoundingClientRect(), t = gTipEl.getBoundingClientRect(), pad = 8;
+  const left = Math.min(Math.max(pad, r.left + r.width / 2 - t.width / 2), innerWidth - t.width - pad);
+  let top = r.top - t.height - 10;
+  if (top < pad) { top = r.bottom + 10; gTipEl.classList.add("below"); }
+  gTipEl.style.left = left + "px"; gTipEl.style.top = top + "px";
+  gTipEl.style.setProperty("--ax", (r.left + r.width / 2 - left) + "px");
+  gTipEl.classList.add("on");
+}
+function hideGTip() { gTipFor = null; gTipEl.classList.remove("on"); }
+document.addEventListener("mouseover", e => { const el = e.target.closest?.("[data-tip]"); if (el && el !== gTipFor && matchMedia("(hover: hover)").matches) showGTip(el); });
+document.addEventListener("mouseout", e => { const el = e.target.closest?.("[data-tip]"); if (el && !el.contains(e.relatedTarget) && matchMedia("(hover: hover)").matches) hideGTip(); });
+document.addEventListener("click", e => {
+  const el = e.target.closest?.("[data-tip]");
+  if (el) { e.stopPropagation(); el === gTipFor && !matchMedia("(hover: hover)").matches ? hideGTip() : showGTip(el); }
+}, true);
+// iPhone Safari doesn't send "click" for taps on plain areas, so close on any touch/press outside the tag
+document.addEventListener("pointerdown", e => { if (gTipFor && !e.target.closest?.("[data-tip]")) hideGTip(); }, true);
+addEventListener("scroll", () => { if (gTipFor) hideGTip(); }, { passive: true });
+
 function renderSwOutlook() {
   const box = document.getElementById("swOutlook"), sc = SW.scales, fp = SW.flare;
   if (!sc) { box.innerHTML = `<div class="sub">The outlook isn't available right now.</div>`; return; }
@@ -995,7 +1041,7 @@ function renderSwOutlook() {
     const kps = SW.kp.filter(r => dayUTC(r.t) === t).map(r => r.kp), kmax = kps.length ? Math.max(...kps) : null;
     const g = kmax != null ? gLevel(kmax) : (+d.G.Scale || 0);
     const fl = fp ? `${fp[`c_class_${i + 1}_day`]}/${fp[`m_class_${i + 1}_day`]}/${fp[`x_class_${i + 1}_day`]}%` : "–";
-    return `<tr><td>${fmtDay(t)}</td><td>${kmax != null ? kmax.toFixed(1) : "–"} <span class="gtag ${g >= 2 ? "g2" : g === 1 ? "g1" : ""}">G${g}</span></td>
+    return `<tr><td>${fmtDay(t)}</td><td>${kmax != null ? kmax.toFixed(1) : "–"} <button type="button" class="gtag ${g >= 2 ? "g2" : g === 1 ? "g1" : ""}" data-tip-title="${G_INFO[g][0]}" data-tip="${G_INFO[g][1]}" aria-label="G${g}: ${G_INFO[g][0]}. ${G_INFO[g][1]}">G${g === 0 ? `<span class="z0">0</span>` : g}</button></td>
       <td>${d.R.MinorProb ?? "–"}%</td><td>${fl}</td></tr>`;
   }).join("");
   box.innerHTML = `<table><thead><tr><th>Day</th><th>Max Kp</th><th title="Chance of an R1–R2 radio blackout">Blackout</th><th title="Chance of C, M and X class flares">Flares C/M/X</th></tr></thead><tbody>${rows}</tbody></table>`;
