@@ -126,8 +126,14 @@
   @media (min-width: 701px) {
     .sttop .who { flex: 1 1 0; }
     .sttop .stgrid { flex: 1 1 0; justify-content: flex-end; }
-    .stclock .t { font-size: 38px; }
-    .stclock .t small { font-size: 18px; }
+    .sttop .who { min-width: max-content; }
+    .stclock .t { font-size: 32px; }
+    .stclock .t small { font-size: 16px; }
+  }
+  @media (min-width: 1000px) {
+    .stclock .t { font-size: 44px; }
+    .stclock .t small { font-size: 20px; }
+    .stclock + .stclock { margin-left: 26px; }
   }
   @media (max-width: 380px) { .stationbox .callsign:not(.nocall), .stclock .t { font-size: 26px; } .sttop { column-gap: 8px; } }
   @media (max-width: 340px) { .stationbox .callsign:not(.nocall), .stclock .t { font-size: 22px; } .stclock .t small { font-size: 12px; } }
@@ -246,6 +252,7 @@
   .swoutlook th { color: var(--muted); font-weight: 600; font-size: 11px; }
   .swoutlook td:first-child, .swoutlook th:first-child { text-align: left; }
   .gtag { display: inline-block; min-width: 28px; border-radius: 4px; padding: 1px 5px; font-weight: 700; font-size: 12px; color: #0b1117; background: var(--good); }
+  .suncap { text-align: center; margin: 4px 0 6px; }
   .gtag.g1 { background: var(--fair); } .gtag.g2 { background: var(--poor); }
   button.gtag { border: 0; font-family: inherit; line-height: inherit; cursor: help; }
   button.gtag:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
@@ -324,7 +331,7 @@
 <body>
 <header>
   <h1>Ham<span>Dash</span></h1>
-  <div class="vnum">v1.8.4</div>
+  <div class="vnum">v1.8.5</div>
   <div class="sub" id="updated">Loading…</div>
   <div class="sub vdate">10/26/2026</div>
 </header>
@@ -460,12 +467,12 @@
         <div class="swsun">
           <div class="swsub">The Sun right now</div>
           <a id="sunLink" href="https://sdo.gsfc.nasa.gov/data/" target="_blank" rel="noopener"><img id="sunImg" alt="Latest image of the Sun from NASA's Solar Dynamics Observatory" width="512" height="512"></a>
+          <div class="sub suncap" id="sunCap"></div>
           <div class="chips" id="sunChips">
             <button data-w="0193">Coronal holes</button>
             <button data-w="HMIIC">Sunspots</button>
             <button data-w="0131">Flares</button>
           </div>
-          <div class="sub" id="sunCap"></div>
         </div>
       </div>
       <div class="sub swcycle" id="swCycle"></div>
@@ -1048,18 +1055,13 @@ function renderSwOutlook() {
 }
 let sunWave = "0193";
 try { const w = localStorage.getItem("hamdash.sunwave"); if (["0193", "HMIIC", "0131"].includes(w)) sunWave = w; } catch {}
-const SUN_CAPS = {
-  "0193": "Dark patches are coronal holes. Their fast solar wind can bring storms about 3 days after they face Earth.",
-  "HMIIC": "Visible light: the dark spots are sunspots. More spots means higher flux and better high bands.",
-  "0131": "Hot flare plasma. Bright spots are active regions that can produce flares and radio blackouts.",
-};
 function renderSun() {
   const img = document.getElementById("sunImg"), stamp = Math.floor(Date.now() / 9e5);   // fresh image every 15 min
   const src = `https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_${sunWave}.jpg?${stamp}`;
   if (img.dataset.src !== src) { img.src = src; img.dataset.src = src; }
   document.getElementById("sunLink").href = `https://sdo.gsfc.nasa.gov/assets/img/latest/latest_2048_${sunWave}.jpg`;
   document.querySelectorAll("#sunChips button").forEach(b => b.classList.toggle("on", b.dataset.w === sunWave));
-  document.getElementById("sunCap").textContent = "Live from NASA SDO · tap to enlarge. " + SUN_CAPS[sunWave];
+  document.getElementById("sunCap").textContent = "Tap to enlarge";
 }
 function renderSwCycle() {
   const el = document.getElementById("swCycle"), c = SW.cycle;
