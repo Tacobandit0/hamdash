@@ -199,6 +199,33 @@
   .morebtn { margin-top: 8px; width: 100%; background: var(--inset); color: var(--text); border: 1px solid var(--line); border-radius: 10px;
     padding: 9px; font: 600 14px inherit; font-family: inherit; cursor: pointer; }
   .morebtn[hidden] { display: none; }
+  .park .row { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .park.open { border-color: var(--good); }
+  .park .pk { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .park .pcall { font: 700 15px ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--good); margin-right: 6px; }
+  .park .pref { font-size: 13px; color: var(--muted); }
+  .park .youtag { margin: 0 8px 0 -2px; vertical-align: 1px; }
+  .park .pfreq { font: 600 13px ui-monospace, "SF Mono", Menlo, Consolas, monospace; display: flex; align-items: center; gap: 6px; }
+  .park .mode.ssb { background: var(--accent); } .park .mode.cw { background: var(--sat); } .park .mode.oth { background: #b18cff; }
+  .park .opl { font-size: 13px; color: var(--text); }
+  .park .opl .cls { color: var(--muted); }
+  .park .pbtns { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .park .pbtns a { text-decoration: none; display: inline-block; }
+  .chips .csep { width: 1px; align-self: stretch; background: var(--line); margin: 2px 4px; }
+  .potasub { font-size: 12px; color: var(--muted); letter-spacing: .6px; text-transform: uppercase; font-weight: 700; margin: 14px 2px 6px; }
+  .psched { display: grid; gap: 5px; font-size: 13px; }
+  .psched .ps { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: baseline; padding: 0 2px; }
+  .psched .ps .pt { font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .psched .ps .pw { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .psched .ps .pw b { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--good); }
+  .psched .ps .pd { color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .psched .ps.now .pt { color: var(--good); }
+  .myspotsbar { border-top: 1px solid var(--line); margin-top: 12px; padding: 10px 2px 0; font-size: 13px; color: var(--muted); border-radius: 0; }
+  .myspotsbar .lbl { color: var(--text); font-weight: 700; }
+  .myspotsbar.hit .lbl { color: #ff4fa3; }
+  .myspotsbar .myline { margin-top: 4px; color: var(--text); overflow-wrap: anywhere; }
+  .myspotsbar .myline b { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--spot); }
+  .myspotsbar .linkbtn { font-size: 13px; }
   .satempty { color: var(--muted); font-size: 14px; padding: 8px 2px; }
   .setupform input.callin { width: 130px; }
   .stationbox .callsign { font: 800 30px/1.1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--accent); letter-spacing: 1px; }
@@ -221,7 +248,7 @@
   .spotsum { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
   .spotsum span { background: var(--inset); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; font-size: 13px; font-variant-numeric: tabular-nums; }
   .spotsum b { color: var(--text); }
-  #mySpotsPanel.alerting { animation: spotalert 1.6s ease-in-out 3; }
+  #mySpotsPanel.alerting { animation: spotalert 1.6s ease-in-out 3; border-radius: 8px; }
   @keyframes spotalert { 50% { box-shadow: 0 0 0 2px #ff4fa3, 0 0 22px -2px #ff4fa3; } }
   @media (prefers-reduced-motion: reduce) { #mySpotsPanel.alerting { animation: none; box-shadow: 0 0 0 2px #ff4fa3; } }
   .myempty { color: var(--muted); font-size: 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
@@ -317,6 +344,11 @@
   .resetbtn:hover { border-color: var(--accent); }
   .resetbtn[hidden] { display: none; }
   #actmap:active { cursor: grabbing; }
+  #potamap { cursor: grab; touch-action: none; } #potamap:active { cursor: grabbing; }
+  .potatip { border-color: var(--good); }
+  .potatip .pc { font-weight: 700; color: var(--good); font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  .potahead { display: flex; align-items: center; gap: 10px; }
+  #potaList { margin-top: 10px; }
   .tapinfo { margin-top: 8px; background: var(--inset); border: 1px solid var(--spot); border-radius: 10px; padding: 10px 12px; font-size: 15px; }
   .tapinfo[hidden] { display: none; }
   .tapinfo .tihead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; color: var(--muted); font-size: 13px; }
@@ -353,7 +385,7 @@
 <body>
 <header>
   <h1>Ham<span>Dash</span></h1>
-  <div class="vnum">v1.9.3</div>
+  <div class="vnum">v1.10.0</div>
   <div class="sub" id="updated">Loading…</div>
   <div class="sub vdate">10/26/2026</div>
 </header>
@@ -513,6 +545,28 @@
     </div>
   </section>
 
+  <section class="panel full" id="potaPanel">
+    <div class="panelhead">
+      <h2>Parks on the Air</h2>
+      <div class="potahead"><span class="sub" id="potaCount"></span><button class="resetbtn" id="potaReset" hidden>Reset view</button></div>
+    </div>
+    <div class="chips" id="potaChips"></div>
+    <div class="mapwrap">
+      <canvas id="potamap" width="1440" height="720" aria-label="Map of park activators on the air"></canvas>
+      <div class="tip potatip" id="potaTip"></div>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--good);box-shadow:0 0 6px var(--good)"></i>Park activator on the air (brighter = more recent)</span>
+      <span><i style="background:#ff4fa3"></i>Home</span>
+      <span>Tap a dot to open it below · pinch or scroll to zoom, drag to move</span>
+    </div>
+    <div class="satlist" id="potaList"><div class="satempty">Checking who's on the air from parks…</div></div>
+    <button class="morebtn" id="potaMore" hidden></button>
+    <div class="potasub">Coming up near you</div>
+    <div class="psched" id="potaSched"><div class="satempty">Checking scheduled activations…</div></div>
+    <div class="myspotsbar" id="mySpotsPanel"><div id="mySpots"></div></div>
+  </section>
+
   <section class="panel full" id="satPanel">
     <div class="panelhead">
       <h2>Satellite passes</h2>
@@ -640,7 +694,7 @@ async function loadGeo() {
       states: us ? topojson.mesh(us, us.objects.states, (a, b) => a !== b) : null,
     };
   } catch (e) { console.warn("Map outlines unavailable", e); }
-  drawGrayMap(); rebuildActBase(); if (typeof rebuildSatBase === "function") { rebuildSatBase(); drawSatMap(); }
+  drawGrayMap(); rebuildActBase(); if (typeof rebuildSatBase === "function") { rebuildSatBase(); drawSatMap(); } if (typeof rebuildPotaBase === "function") rebuildPotaBase();
 }
 
 // A "view" is a lon/lat box drawn into a 2:1 canvas.
@@ -1246,7 +1300,7 @@ const QUERIES = [
 ];
 const lastResp = [];   // most recent answer to each query
 // spots of your own callsign, checked every other turn (about every 40 s)
-const SHOW_MY_SPOTS = false;   // "Your spots" box is parked for now; it returns with the POTA boxes
+const SHOW_MY_SPOTS = true;    // "Your spots" lives at the bottom of the Parks on the Air box
 const MY_SPOT_HOURS = 12;
 const mySpots = new Map();
 let mySpotsLoaded = false, mySpotsOk = null, mySeen = new Set();
@@ -1367,42 +1421,35 @@ function resetMySpots() {
 }
 function renderMySpots() {
   if (!SHOW_MY_SPOTS) return;
-  const box = document.getElementById("mySpots"), sub = document.getElementById("mySpotsSub");
+  const box = document.getElementById("mySpots"), bar = document.getElementById("mySpotsPanel");
   const cut = Date.now() - MY_SPOT_HOURS * 3600e3;
   for (const [k, s] of mySpots) if (s.t < cut) mySpots.delete(k);
   if (!MY.call) {
-    sub.textContent = "";
-    box.innerHTML = `<div class="myempty">Add your callsign to see when other hams spot you on the air. <button class="resetbtn" id="mySpotsAdd">Add callsign</button></div>`;
+    bar.classList.remove("hit");
+    box.innerHTML = `<span class="lbl">Your spots:</span> add your callsign to see when other hams spot you. <button class="linkbtn" id="mySpotsAdd">Add callsign</button>`;
     document.getElementById("mySpotsAdd").onclick = () => openSetup(true);
     return;
   }
   const list = [...mySpots.values()].sort((a, b) => b.t - a.t);
-  sub.textContent = list.length ? `${list.length} in the last ${MY_SPOT_HOURS} hours` : "";
+  const ago = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? "just now" : m < 60 ? m + " min ago" : Math.floor(m / 60) + " h " + (m % 60) + " min ago"; };
+  bar.classList.toggle("hit", list.length > 0);
   if (!list.length) {
-    box.innerHTML = `<div class="myempty">${mySpotsOk === false ? `<span class="err">Couldn't check for spots of ${esc(MY.call)}. Retrying shortly.</span>`
-      : mySpotsOk === null ? "Checking for spots of " + esc(MY.call) + "…"
-      : `No spots of ${esc(MY.call)} in the last ${MY_SPOT_HOURS} hours. When someone posts you to a DX cluster or POTA, it'll show up here within a minute or so.`}</div>`;
+    box.innerHTML = `<span class="lbl">Your spots:</span> ${mySpotsOk === false ? `<span class="err">couldn't check right now. Retrying shortly.</span>`
+      : mySpotsOk === null ? `checking for spots of ${esc(MY.call)}…`
+      : `none in the last ${MY_SPOT_HOURS} hours · lights up pink when someone spots ${esc(MY.call)}`}`;
     return;
   }
-  const far = list.filter(s => s.dist != null).sort((a, b) => b.dist - a.dist)[0];
-  const bands = [...new Set(list.map(s => s.band).filter(Boolean))];
-  const ago = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? "just now" : m < 60 ? m + " min ago" : Math.floor(m / 60) + " h " + (m % 60) + " min ago"; };
-  box.innerHTML = `<div class="spotsum">
-      ${bands.length ? `<span>Heard on <b>${bands.join(", ")}</b></span>` : ""}
-      ${far ? `<span>Farthest <b>${esc(far.by)}</b>, ${far.dist.toLocaleString()} mi</span>` : ""}
-    </div>` + list.slice(0, 10).map(s => `
-    <div class="myspot ${s.isNew ? "new" : ""}">
-      <div class="by"><b>${esc(s.by)}</b> spotted you${s.isNew ? `<span class="newtag">NEW</span>` : ""}</div>
-      <div class="ago" data-t="${s.t}">${ago(s.t)}</div>
-      <div class="det"><b>${s.band || "?"}</b> · ${(s.freq / 1000).toFixed(3)} MHz${s.mode ? " · " + s.mode : ""}${s.dist != null ? ` · ${s.loc && s.loc.rough ? "about " : ""}${s.dist.toLocaleString()} mi away` : ""}${s.src === "Parks on the Air" ? " · POTA" : ""}${s.note ? ` · “${esc(s.note.slice(0, 60))}”` : ""}</div>
-    </div>`).join("") + (list.length > 10 ? `<div class="sub" style="margin-top:6px">+ ${list.length - 10} earlier spots</div>` : "");
+  box.innerHTML = `<span class="lbl">Your spots:</span> ${list.length} in the last ${MY_SPOT_HOURS} hours` +
+    list.slice(0, 3).map(s => `<div class="myline"><b>${esc(s.by)}</b> spotted you on ${s.band || "?"} · ${(s.freq / 1000).toFixed(3)}${s.mode ? " " + s.mode : ""}` +
+      `${s.dist != null ? ` · ${s.loc && s.loc.rough ? "about " : ""}${s.dist.toLocaleString()} mi` : ""} · ${ago(s.t)}${s.isNew ? ` <span class="newtag">NEW</span>` : ""}</div>`).join("") +
+    (list.length > 3 ? `<div class="myline" style="color:var(--muted)">+ ${list.length - 3} earlier</div>` : "");
 }
 setInterval(() => { if (MY.call && mySpots.size) renderMySpots(); }, 60000);   // keep "min ago" current
 
 async function pollPOTA() {
-  try { ingestPOTA(await getJSON("https://api.pota.app/spot/activator")); potaOk = true; markUpdated(); }
+  try { const list = await getJSON("https://api.pota.app/spot/activator"); ingestPOTA(list); potaSpots = list; potaOk = true; markUpdated(); }
   catch (e) { potaOk = false; }
-  pruneAndRender();
+  pruneAndRender(); renderPOTA(); renderMySpots();
 }
 let resolving = false;
 async function resolveUS() {
@@ -1591,8 +1638,12 @@ async function toggleOpInfo(call) {
   const b = baseCall(call);
   if (infoOpen.has(b)) { infoOpen.delete(b); renderTapInfo(); return; }
   infoOpen.add(b);
+  await loadOpInfo(b, renderTapInfo);
+  renderTapInfo();
+}
+async function loadOpInfo(b, onStart) {
   if (!opInfo.has(b) || opInfo.get(b).state === "error") {
-    opInfo.set(b, { state: "loading" }); renderTapInfo();
+    opInfo.set(b, { state: "loading" }); if (onStart) onStart();
     try {
       const j = await getJSON("https://callook.info/" + encodeURIComponent(b) + "/json");
       if (j.status !== "VALID") opInfo.set(b, { state: "notfound" });
@@ -1608,7 +1659,6 @@ async function toggleOpInfo(call) {
       }
     } catch { opInfo.set(b, { state: "error" }); }
   }
-  renderTapInfo();
 }
 function bearingTo(p) {
   const φ1 = rad(HOME.lat), φ2 = rad(p.lat), Δλ = rad(p.lon - HOME.lon);
@@ -1818,6 +1868,290 @@ document.getElementById("grayReset").onclick = () => {
   try { localStorage.removeItem("hamdash.graybox"); } catch {}
 };
 
+// ================= Parks on the Air box =================
+// Live activators from api.pota.app (FT8/FT4 left out, like the activity map), closest first,
+// plus scheduled activations near you. Park locations are cached on this device.
+let potaSpots = null, potaSoon = null, potaSchedOk = null;
+let potaBand = "all", potaMode = "all", potaOpen = null, potaShowAll = false;
+try { potaBand = localStorage.getItem("hamdash.potaband") || "all"; potaMode = localStorage.getItem("hamdash.potamode") || "all"; } catch {}
+const parkCache = (() => { try { return JSON.parse(localStorage.getItem("hamdash.parks") || "{}"); } catch { return {}; } })();
+const POTA_NEAR_MI = 300, POTA_ROWS = 8;
+const potaModeCat = m => m === "CW" ? "CW" : m === "SSB" ? "SSB" : "Other";
+const potaAgo = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? "just now" : m < 60 ? m + " min ago" : Math.floor(m / 60) + " h " + (m % 60) + " min ago"; };
+function potaRows() {
+  return (potaSpots || []).map(sp => {
+    const freq = +sp.frequency, band = bandOf(freq);
+    if (!band || sp.invalid || sp.latitude == null || isFT(freq, sp.mode, sp.comments)) return null;
+    const loc = { lat: +sp.latitude, lon: +sp.longitude };
+    return { call: (sp.activator || "").toUpperCase(), ref: sp.reference, park: sp.name || sp.parkName || sp.reference,
+      where: sp.locationDesc || "", freq, band, mode: guessMode(freq, sp.mode, sp.comments), loc,
+      t: Date.parse(sp.spotTime + (/Z$/.test(sp.spotTime) ? "" : "Z")),
+      by: (sp.spotter || "").toUpperCase().replace(/-#$/, ""), count: sp.count || 0, comments: sp.comments || "", rbn: sp.source === "RBN",
+      dist: HOME.unset ? null : Math.round(miles(HOME, loc)) };
+  }).filter(Boolean);
+}
+function renderPOTA() {
+  potaRecluster();
+  const listEl = document.getElementById("potaList"), more = document.getElementById("potaMore");
+  const all = potaRows();
+  document.getElementById("potaCount").textContent = potaSpots ? `${all.length} on the air` : "";
+  // chips: bands that have someone on them (plus the chosen one), then modes
+  const byMode = all.filter(r => potaMode === "all" || potaModeCat(r.mode) === potaMode);
+  const counts = {}; for (const r of byMode) counts[r.band] = (counts[r.band] || 0) + 1;
+  const bands = BAND_PLAN.map(b => b[0]).filter(b => counts[b] || b === potaBand);
+  const chip = (kind, id, label, n) => { const on = (kind === "b" ? potaBand : potaMode) === id;
+    return `<button data-${kind}="${id}" class="${on ? "on" : ""}" aria-pressed="${on}">${label}${n != null ? ` <b>${n}</b>` : ""}</button>`; };
+  document.getElementById("potaChips").innerHTML =
+    chip("b", "all", "All bands", byMode.length) + bands.map(b => chip("b", b, b, counts[b] || 0)).join("") +
+    `<span class="csep" aria-hidden="true"></span>` + chip("m", "all", "All modes") + chip("m", "SSB", "SSB") + chip("m", "CW", "CW");
+  document.querySelectorAll("#potaChips button").forEach(btn => btn.onclick = () => {
+    if (btn.dataset.b) potaBand = btn.dataset.b; else potaMode = btn.dataset.m;
+    try { localStorage.setItem("hamdash.potaband", potaBand); localStorage.setItem("hamdash.potamode", potaMode); } catch {}
+    potaShowAll = false; renderPOTA();
+  });
+  if (!potaSpots) {
+    listEl.innerHTML = potaOk === false ? `<div class="satempty err">Couldn't reach POTA. Retrying every minute.</div>` : `<div class="satempty">Checking who's on the air from parks…</div>`;
+    more.hidden = true; return;
+  }
+  const rows = byMode.filter(r => potaBand === "all" || r.band === potaBand)
+    .sort((a, b) => (a.dist ?? 1e9) - (b.dist ?? 1e9));
+  if (!rows.length) {
+    listEl.innerHTML = `<div class="satempty">${all.length
+      ? `Nobody on ${potaBand === "all" ? "" : potaBand + " "}${potaMode === "all" ? "" : potaMode + " "}right now. Try All bands or All modes.`
+      : "No park activators on SSB or CW right now. (FT8 activations are left out.)"}</div>`;
+    more.hidden = true; return;
+  }
+  const shown = potaShowAll ? rows : rows.slice(0, POTA_ROWS);
+  listEl.innerHTML = shown.map(potaRow).join("");
+  more.hidden = rows.length <= POTA_ROWS;
+  more.textContent = potaShowAll ? "Show fewer" : `Show all ${rows.length}`;
+  listEl.querySelectorAll(".park").forEach(el => {
+    const toggle = () => {
+      potaOpen = potaOpen === el.dataset.k ? null : el.dataset.k; renderPOTA();
+      const r = rows.find(x => x.call + "|" + x.ref === potaOpen);
+      if (r) loadOpInfo(baseCall(r.call)).then(renderPOTA);
+    };
+    el.onclick = e => { if (e.target.closest("a, button")) return; toggle(); };
+    el.onkeydown = e => { if ((e.key === "Enter" || e.key === " ") && e.target === el) { e.preventDefault(); toggle(); } };
+  });
+  listEl.querySelectorAll("[data-map]").forEach(b => b.onclick = e => {
+    e.stopPropagation(); const r = rows.find(x => x.call + "|" + x.ref === b.dataset.map); if (r) showParkOnMap(r);
+  });
+}
+function potaRow(r) {
+  const k = r.call + "|" + r.ref, open = potaOpen === k, cat = potaModeCat(r.mode);
+  let op = "";
+  if (open) {
+    const i = opInfo.get(baseCall(r.call));
+    op = !i || i.state === "loading" ? `<div class="opl cls">Looking up ${esc(baseCall(r.call))}…</div>`
+      : i.state === "ok" ? `<div class="opl">${esc(i.name || baseCall(r.call))}${i.cls ? ` <span class="cls">· ${esc(i.cls)}</span>` : ""}${i.city ? ` <span class="cls">· ${esc(i.city)}</span>` : ""}</div>`
+      : i.state === "notfound" ? `<div class="opl cls">Not in the FCC database, so likely licensed outside the US.</div>` : "";
+  }
+  const brg = r.dist != null ? compass(Math.round(bearingTo(r.loc))) : "";
+  return `<div class="pass park ${open ? "open" : ""}" data-k="${esc(k)}" role="button" tabindex="0" aria-expanded="${open}">
+    <div class="row">
+      <div class="pk"><span class="pcall">${esc(r.call)}</span>${MY.call && isMe(r.call) ? `<span class="newtag youtag">YOU</span>` : ""}<span class="pref">${esc(r.ref)} · ${esc(r.park)}</span></div>
+      <div class="pfreq">${(r.freq / 1000).toFixed(3)}<span class="mode ${cat === "SSB" ? "ssb" : cat === "CW" ? "cw" : "oth"}">${esc(r.mode || "?")}</span></div>
+      <div class="chev">${open ? "▲" : "▼"}</div>
+    </div>
+    ${open ? `<div class="details">
+      <div class="facts">${r.dist != null ? `<span><b>${r.dist.toLocaleString()} mi ${brg}</b></span>` : ""}<span>${r.band}</span>
+        <span>spotted ${potaAgo(r.t)}${r.by ? " by " + esc(r.by) : ""}</span>${r.count ? `<span>${r.count} spot${r.count === 1 ? "" : "s"} so far</span>` : ""}</div>
+      <div class="note">${esc(r.park)}${r.where ? " · " + esc(r.where.replace(/,/g, ", ")) : ""}</div>
+      ${r.comments && !r.rbn ? `<div class="note">“${esc(r.comments.slice(0, 80))}”</div>` : ""}
+      ${op}
+      <div class="pbtns"><a class="resetbtn" href="https://pota.app/#/park/${encodeURIComponent(r.ref)}" target="_blank" rel="noopener">Park page ↗</a>
+        <button class="resetbtn" data-map="${esc(k)}">Show on map</button></div>
+    </div>` : ""}
+  </div>`;
+}
+document.getElementById("potaMore").onclick = () => { potaShowAll = !potaShowAll; renderPOTA(); };
+// Zoom the park map onto the park and open its row
+function showParkOnMap(r) {
+  potaOpen = r.call + "|" + r.ref;
+  PV = clampView(r.loc.lon - 12, r.loc.lat + 6, 24);
+  try { localStorage.setItem("hamdash.potabox", JSON.stringify(PV)); } catch {}
+  rebuildPotaBase(); renderPOTA();
+  potaCanvas.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+// ----- Park map: same look and gestures as Band activity, with green pulsing dots for parks -----
+var PV = { ...VIEWS.na }, potaBaseView = null, potaClusters = [], potaLooping = false, potaVisible = false, potaPZt = null;
+try { const b = JSON.parse(localStorage.getItem("hamdash.potabox")); if (b && b.lon1 > b.lon0 && b.lat1 > b.lat0) PV = b; } catch {}
+const potaCanvas = document.getElementById("potamap"), potaCtx = potaCanvas.getContext("2d");
+const potaBase = document.createElement("canvas"); potaBase.width = 1440; potaBase.height = 720;
+const potaTipEl = document.getElementById("potaTip");
+const POTA_FRESH_MIN = 60;            // dots fade over an hour since the last spot
+function rebuildPotaBase() { drawWorld(potaBase, PV, { nightAlpha: 0.7 }); potaBaseView = { ...PV }; }
+function potaRecluster() {
+  if (!potaCanvas) return;
+  const P = projector(PV, 1440, 720);
+  potaClusters = [];
+  const rows = potaRows().filter(r => (potaMode === "all" || potaModeCat(r.mode) === potaMode) && (potaBand === "all" || r.band === potaBand))
+    .sort((a, b) => b.t - a.t);
+  for (const r of rows) {
+    if (r.loc.lon < PV.lon0 || r.loc.lon > PV.lon1 || r.loc.lat < PV.lat0 || r.loc.lat > PV.lat1) continue;
+    const x = P.x(r.loc.lon), y = P.y(r.loc.lat);
+    const c = potaClusters.find(c => Math.hypot(c.x - x, c.y - y) < 18);
+    if (c) c.items.push(r); else potaClusters.push({ x, y, items: [r], seed: Math.random() * 10 });
+  }
+  for (const c of potaClusters) c.newest = Math.max(...c.items.map(r => r.t));
+  const d = VIEWS.na;
+  document.getElementById("potaReset").hidden = Math.abs(PV.lon0 - d.lon0) < .01 && Math.abs(PV.lon1 - d.lon1) < .01 && Math.abs(PV.lat1 - d.lat1) < .01;
+}
+function potaFrame(now) {
+  if (!potaVisible || document.hidden) { potaLooping = false; return; }
+  const ctx = potaCtx, t = now / 1000;
+  if (potaBaseView && (potaBaseView.lon0 !== PV.lon0 || potaBaseView.lat1 !== PV.lat1 || potaBaseView.lon1 !== PV.lon1)) {
+    const k = (potaBaseView.lon1 - potaBaseView.lon0) / (PV.lon1 - PV.lon0), P = projector(PV, 1440, 720);
+    ctx.fillStyle = "#123a57"; ctx.fillRect(0, 0, 1440, 720);
+    ctx.drawImage(potaBase, P.x(potaBaseView.lon0), P.y(potaBaseView.lat1), 1440 * k, 720 * k);
+  } else ctx.drawImage(potaBase, 0, 0);
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  for (const c of potaClusters) {
+    const ageMin = (Date.now() - c.newest) / 60000;
+    const fresh = Math.max(0.25, 1 - ageMin / POTA_FRESH_MIN);
+    const n = c.items.length, coreR = 5 + Math.min(6, Math.sqrt(n) * 2);
+    const period = 2.4 - fresh * 0.8, reach = 26 + coreR * 2.2;
+    for (let k = 0; k < 3; k++) {
+      const p = reduceMotion ? (k + 1) / 3.5 : ((t + c.seed) / period + k / 3) % 1;
+      ctx.strokeStyle = `rgba(62,207,122,${(1 - p) ** 1.4 * 0.95 * fresh})`;
+      ctx.lineWidth = 2.6 * (1 - p) + 0.6;
+      ctx.beginPath(); ctx.arc(c.x, c.y, coreR + p * reach, 0, 7); ctx.stroke();
+    }
+    const g = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, coreR * 3);
+    g.addColorStop(0, `rgba(90,230,150,${0.5 * fresh})`); g.addColorStop(1, "rgba(62,207,122,0)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(c.x, c.y, coreR * 3, 0, 7); ctx.fill();
+    const breathe = reduceMotion ? 1 : 1 + 0.12 * Math.sin((t + c.seed) * 2 * Math.PI / period);
+    ctx.fillStyle = `rgba(70,215,130,${0.55 + 0.45 * fresh})`;
+    ctx.beginPath(); ctx.arc(c.x, c.y, coreR * breathe, 0, 7); ctx.fill();
+    ctx.fillStyle = `rgba(225,255,235,${0.8 * fresh})`;
+    ctx.beginPath(); ctx.arc(c.x, c.y, coreR * 0.4, 0, 7); ctx.fill();
+  }
+  ctx.restore();
+  const sel = potaOpen && potaClusters.find(c => c.items.some(r => r.call + "|" + r.ref === potaOpen));
+  if (sel) {
+    ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(sel.x, sel.y, 5 + Math.min(6, Math.sqrt(sel.items.length) * 2) + 7, 0, 7); ctx.stroke();
+  }
+  ctx.font = "700 15px ui-monospace, Menlo, Consolas, monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for (const c of potaClusters) if (c.items.length > 1) { ctx.fillStyle = "#0b1117"; ctx.fillText(c.items.length, c.x, c.y + 0.5); }
+  drawHome(ctx, projector(PV, 1440, 720));
+  if (potaSpots && !potaClusters.length) {
+    ctx.fillStyle = "rgba(11,17,23,.75)"; ctx.fillRect(470, 330, 500, 60);
+    ctx.fillStyle = "#c5d1dc"; ctx.font = "600 20px -apple-system, Segoe UI, sans-serif";
+    ctx.fillText(potaBand === "all" && potaMode === "all" ? "No park activators in this area right now" : "No matching activators in this area right now", 720, 360);
+  }
+  requestAnimationFrame(potaFrame);
+}
+function startPotaLoop() { if (!potaLooping && potaVisible && !document.hidden) { potaLooping = true; requestAnimationFrame(potaFrame); } }
+// only animate while the map is on screen, to save battery
+if ("IntersectionObserver" in window) new IntersectionObserver(es => { potaVisible = es[0].isIntersecting; startPotaLoop(); }).observe(potaCanvas);
+else { potaVisible = true; startPotaLoop(); }
+document.addEventListener("visibilitychange", startPotaLoop);
+
+function potaClusterAt(ev) {
+  const r = potaCanvas.getBoundingClientRect(), sx = potaCanvas.width / r.width;
+  const x = (ev.clientX - r.left) * sx, y = (ev.clientY - r.top) * sx, reach = Math.max(22, 24 * sx);
+  return potaClusters.filter(c => Math.hypot(c.x - x, c.y - y) < reach)
+    .sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y))[0];
+}
+// Tap a dot: one park opens its row below; a group zooms in so the parks separate
+function potaTap(ev) {
+  potaTipEl.style.display = "none";
+  const c = potaClusterAt(ev);
+  if (!c) return;
+  const span = PV.lon1 - PV.lon0;
+  const sameSpot = c.items.every(r => Math.abs(r.loc.lat - c.items[0].loc.lat) < .02 && Math.abs(r.loc.lon - c.items[0].loc.lon) < .02);
+  if (c.items.length > 1 && !sameSpot && span > MIN_SPAN + .5) {
+    const P = projector(PV, 1440, 720), lon = PV.lon0 + c.x / 1440 * span, lat = PV.lat1 - c.y / 720 * (span / 2);
+    // zoom far enough that the parks in the group separate (at least 3x)
+    const lons = c.items.map(r => r.loc.lon), lats = c.items.map(r => r.loc.lat);
+    const spread = Math.max(Math.max(...lons) - Math.min(...lons), (Math.max(...lats) - Math.min(...lats)) * 2);
+    const ns = Math.max(MIN_SPAN, Math.min(span / 3, spread * 6));
+    PV = clampView(lon - ns / 2, lat + ns / 4, ns);
+    try { localStorage.setItem("hamdash.potabox", JSON.stringify(PV)); } catch {}
+    rebuildPotaBase(); potaRecluster(); return;
+  }
+  const r = c.items[0], k = r.call + "|" + r.ref;
+  potaOpen = k;
+  const all = potaRows().filter(x => (potaMode === "all" || potaModeCat(x.mode) === potaMode) && (potaBand === "all" || x.band === potaBand))
+    .sort((a, b) => (a.dist ?? 1e9) - (b.dist ?? 1e9));
+  if (all.findIndex(x => x.call + "|" + x.ref === k) >= POTA_ROWS) potaShowAll = true;
+  renderPOTA();
+  loadOpInfo(baseCall(r.call)).then(renderPOTA);
+  const row = [...document.querySelectorAll("#potaList .park")].find(el => el.dataset.k === k);
+  if (row) row.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+// Mouse hover: quick bubble with who's there
+potaCanvas.addEventListener("pointermove", ev => {
+  if (ev.pointerType !== "mouse" || potaPZ.busy()) return;
+  const c = potaClusterAt(ev);
+  if (!c) { potaTipEl.style.display = "none"; return; }
+  potaTipEl.innerHTML = c.items.slice(0, 5).map(r => `<div class="row"><span class="pc">${esc(r.call)}</span><span>${(r.freq / 1000).toFixed(3)} ${esc(r.mode || "")}</span></div>
+    <div class="where">${esc(r.ref)} · ${esc(r.park)}${r.dist != null ? ` · ${r.dist.toLocaleString()} mi` : ""}</div>`).join("") +
+    (c.items.length > 5 ? `<div class="where">+${c.items.length - 5} more · tap to zoom in</div>` : "");
+  const wrap = potaCanvas.parentElement.getBoundingClientRect();
+  potaTipEl.style.display = "block";
+  const tw = potaTipEl.offsetWidth, th = potaTipEl.offsetHeight;
+  let x = ev.clientX - wrap.left + 14, y = ev.clientY - wrap.top + 14;
+  if (x + tw > wrap.width) x = ev.clientX - wrap.left - tw - 14;
+  if (y + th > wrap.height) y = Math.max(0, ev.clientY - wrap.top - th - 14);
+  potaTipEl.style.left = Math.max(0, x) + "px"; potaTipEl.style.top = y + "px";
+});
+potaCanvas.addEventListener("pointerleave", ev => { if (ev.pointerType === "mouse") potaTipEl.style.display = "none"; });
+const potaPZ = attachPanZoom(potaCanvas, {
+  getView: () => PV,
+  setView: box => {
+    PV = box; potaRecluster();
+    clearTimeout(potaPZt);
+    potaPZt = setTimeout(() => {
+      rebuildPotaBase();
+      try { localStorage.setItem("hamdash.potabox", JSON.stringify(PV)); } catch {}
+    }, 150);
+  },
+  onTap: potaTap,
+  onDrag: () => { potaTipEl.style.display = "none"; },
+});
+document.getElementById("potaReset").onclick = () => {
+  PV = { ...VIEWS.na }; try { localStorage.removeItem("hamdash.potabox"); } catch {}
+  rebuildPotaBase(); potaRecluster();
+};
+rebuildPotaBase();
+
+// Scheduled activations in the next two days, within POTA_NEAR_MI of home
+async function loadPotaSched() {
+  let list;
+  try { list = await getJSON("https://api.pota.app/activation"); potaSchedOk = true; }
+  catch { potaSchedOk = false; renderPotaSched(); return; }
+  const now = Date.now();
+  const soon = list.map(a => ({ ...a, start: Date.parse(`${a.startDate}T${a.startTime || "00:00"}Z`), end: Date.parse(`${a.endDate}T${a.endTime || "23:59"}Z`) }))
+    .filter(a => a.start > now - 2 * 3600e3 && a.start < now + 48 * 3600e3 && a.end - a.start < 4 * 86400e3);
+  const need = [...new Set(soon.map(a => a.reference))].filter(ref => !(ref in parkCache)).slice(0, 40);
+  for (let i = 0; i < need.length; i += 6)
+    await Promise.all(need.slice(i, i + 6).map(ref => getJSON(`https://api.pota.app/park/${encodeURIComponent(ref)}`)
+      .then(p => { parkCache[ref] = p && p.latitude != null ? [+(+p.latitude).toFixed(3), +(+p.longitude).toFixed(3)] : null; }).catch(() => {})));
+  try { localStorage.setItem("hamdash.parks", JSON.stringify(parkCache)); } catch {}
+  potaSoon = soon.filter(a => parkCache[a.reference]);
+  renderPotaSched();
+}
+function renderPotaSched() {
+  const el = document.getElementById("potaSched");
+  if (potaSchedOk === false) { el.innerHTML = `<div class="satempty err">Couldn't load the POTA schedule. Retrying in 30 min.</div>`; return; }
+  if (!potaSoon) return;
+  if (HOME.unset) { el.innerHTML = `<div class="satempty">Set your grid square to see activations near you.</div>`; return; }
+  const now = Date.now();
+  const near = potaSoon.map(a => { const c = parkCache[a.reference]; return { ...a, dist: Math.round(miles(HOME, { lat: c[0], lon: c[1] })) }; })
+    .filter(a => a.dist <= POTA_NEAR_MI && a.end > now).sort((a, b) => a.start - b.start).slice(0, 4);
+  if (!near.length) { el.innerHTML = `<div class="satempty">No activations scheduled within ${POTA_NEAR_MI} miles in the next 2 days.</div>`; return; }
+  const when = t => t <= now ? "Now" : new Date(t).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" });
+  el.innerHTML = near.map(a => `<div class="ps ${a.start <= now ? "now" : ""}">
+      <span class="pt">${when(a.start)}</span>
+      <span class="pw"><b>${esc(a.activator)}</b> at ${esc(a.reference)} ${esc(a.name)}${a.frequencies ? ` · <span class="cls" style="color:var(--muted)">${esc(a.frequencies)}</span>` : ""}</span>
+      <span class="pd">${a.dist.toLocaleString()} mi</span></div>`).join("");
+}
+
 // ================= Home location setup =================
 function latLonToGrid(lat, lon) {
   lon += 180; lat += 90;
@@ -1848,7 +2182,8 @@ function useHome(grid) {
   applyHome(grid);
   try { localStorage.setItem("hamdash.home", HOME.grid); } catch {}
   for (const s of stations.values()) s.dist = Math.round(miles(HOME, s.loc));
-  drawGrayMap(); rebuildActBase(); drawClocks(); renderActivity(); loadWeather(); computePasses(); drawSatMap(); runPropForecast(true);
+  drawGrayMap(); rebuildActBase(); rebuildPotaBase(); drawClocks(); renderActivity(); renderPOTA(); loadWeather(); computePasses(); drawSatMap(); runPropForecast(true);
+  if (typeof renderPOTA === "function") { renderPOTA(); renderPotaSched(); }
 }
 const GRID_RE = /^[A-Ra-r]{2}\d{2}([A-Xa-x]{2})?$/;
 gridIn.addEventListener("input", () => { gridIn.dataset.typed = "1"; });
@@ -2644,7 +2979,7 @@ document.getElementById("shareClose").onclick = () => { document.getElementById(
 drawClocks(); renderSolar(); renderBands(); drawGrayMap(); showGrayReset(); rebuildActBase(); renderActivity();
 requestAnimationFrame(frame);
 setInterval(drawClocks, 1000);
-setInterval(() => { drawGrayMap(); rebuildActBase(); renderBands(); renderActivity(); }, 60000);
+setInterval(() => { drawGrayMap(); rebuildActBase(); rebuildPotaBase(); renderBands(); renderActivity(); renderPOTA(); }, 60000);
 loadGeo();
 loadSolar(); setInterval(loadSolar, 10 * 60000);
 loadWeather(); setInterval(loadWeather, 10 * 60000);
@@ -2657,6 +2992,7 @@ initSats(); setInterval(initSats, 10 * 60000);           // re-check orbits (cac
 setInterval(() => { drawSatMap(); tickPasses(); }, 1000);
 setInterval(rebuildSatBase, 60000);                      // keep the night shading current
 startActivity();
+renderPOTA(); loadPotaSched(); setInterval(loadPotaSched, 30 * 60000);
 </script>
 </body>
 </html>
