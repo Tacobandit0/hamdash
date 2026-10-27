@@ -116,28 +116,31 @@
   #satmap:active { cursor: grabbing; }
   .satbar { display: flex; justify-content: space-between; align-items: center; gap: 8px 12px; flex-wrap: wrap; margin: 12px 0 8px; }
   .satbar .chips { margin: 0; }
-  .satlist { display: grid; gap: 8px; }
-  .pass { background: var(--inset); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; cursor: pointer;
-    display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; }
+  .satlist { display: grid; gap: 6px; }
+  .pass { background: var(--inset); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; cursor: pointer; }
   .pass.sel { border-color: var(--sat); }
   .pass.live { border-color: var(--good); box-shadow: 0 0 0 1px var(--good) inset; }
-  .pass .pname { font-weight: 700; font-size: 16px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .pass .mode { font-size: 11px; font-weight: 700; border-radius: 4px; padding: 1px 6px; color: #0b1117; background: var(--sat); }
-  .pass .mode.lin { background: #b18cff; }
-  .pass .when { text-align: right; font-variant-numeric: tabular-nums; }
-  .pass .when b { display: block; font-size: 16px; }
-  .pass .when span { font-size: 12px; color: var(--muted); }
+  .pass .row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; gap: 10px;
+    font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .pass .when { display: flex; align-items: baseline; gap: 6px; min-width: 0; overflow: hidden; }
+  .pass .when b { font-size: 15px; }
+  .pass .when span { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
   .pass.live .when b { color: var(--good); }
-  .pass .facts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .pass .facts b { color: var(--text); font-weight: 600; }
+  .pass .pname { font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 6px; }
+  .pass .mode { font-size: 10px; font-weight: 800; border-radius: 4px; padding: 1px 5px; color: #0b1117; background: var(--sat); }
+  .pass .mode.lin { background: #b18cff; }
+  .pass .el { font-weight: 700; font-size: 14px; min-width: 34px; text-align: right; color: var(--muted); }
   .pass .el.great { color: var(--good); } .pass .el.good { color: var(--fair); }
-  .pass .freq { grid-column: 1 / -1; font: 600 13px ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--text); overflow-wrap: anywhere; }
-  .pass .note { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
-  .pass .note.warnnote { color: var(--fair); }
-  .pass .details { grid-column: 1 / -1; display: none; gap: 4px; margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--line); }
+  .pass .chev { color: var(--muted); font-size: 11px; }
+  .pass .flag { font-size: 12px; }
+  .pass .details { display: none; gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
   .pass.open .details { display: grid; }
-  .pass .flag { font-size: 14px; }
-  .pass .chev { color: var(--muted); font-size: 12px; font-weight: 400; }
+  .pass .facts { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .pass .facts b { color: var(--text); font-weight: 600; }
+  .pass .freq { font: 600 13px ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--text); overflow-wrap: anywhere; }
+  .pass .note { font-size: 12px; color: var(--muted); }
+  .pass .note.warnnote { color: var(--fair); }
+  .satnext { font-size: 13px; color: var(--muted); margin: 2px 2px 6px; }
   .morebtn { margin-top: 8px; width: 100%; background: var(--inset); color: var(--text); border: 1px solid var(--line); border-radius: 10px;
     padding: 9px; font: 600 14px inherit; font-family: inherit; cursor: pointer; }
   .morebtn[hidden] { display: none; }
@@ -247,7 +250,7 @@
 <body>
 <header>
   <h1>Ham<span>Dash</span></h1>
-  <div class="vnum">v1.5.2</div>
+  <div class="vnum">v1.6.0</div>
   <div class="sub" id="updated">Loading…</div>
   <div class="sub vdate">10/25/2026</div>
 </header>
@@ -352,15 +355,15 @@
       <span>Tap a satellite to show its path · pinch or scroll to zoom, drag to move</span>
     </div>
     <div class="satbar">
-      <div class="chips" id="satElChips">
-        <button data-el="10">10°+</button>
-        <button data-el="20">20°+</button>
-        <button data-el="40">40°+</button>
+      <div class="chips" id="satWinChips">
+        <button data-h="1">Next 1 h</button>
+        <button data-h="3">3 h</button>
+        <button data-h="6">6 h</button>
+        <button data-h="12">12 h</button>
       </div>
       <span class="sub" id="satStatus">Loading orbits…</span>
     </div>
     <div class="satlist" id="satList"></div>
-    <button class="morebtn" id="satMore" hidden>Show more passes</button>
   </section>
 
   <section class="panel full" id="propPanel">
@@ -1754,9 +1757,9 @@ const satCanvas = document.getElementById("satmap");
 const satBase = document.createElement("canvas"); satBase.width = 1440; satBase.height = 720; satBase.getContext("2d", { willReadFrequently: true });
 let SV = { ...VIEWS.world }, satBaseView = null, satLib = null, satRecs = [], passes = [], satSel = null, satMinEl = 0;
 try { const s = JSON.parse(localStorage.getItem("hamdash.satbox") || "null"); if (s && s.lon1 > s.lon0) SV = s; } catch {}
-satMinEl = 10;
-try { const e = +localStorage.getItem("hamdash.satel"); if ([10, 20, 40].includes(e)) satMinEl = e; } catch {}
-let satShowAll = false;
+let satWin = 3;                         // hours ahead shown in the pass list
+try { const w = +localStorage.getItem("hamdash.satwin"); if ([1, 3, 6, 12].includes(w)) satWin = w; } catch {}
+let satListKey = "";
 
 async function loadSatLib() {
   if (window.satellite) return window.satellite;
@@ -1874,48 +1877,62 @@ function countdown(ms) {
   const s = Math.max(0, Math.round(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), ss = s % 60;
   return h ? `${h}h ${m}m` : m >= 10 ? `${m} min` : `${m}:${String(ss).padStart(2, "0")}`;
 }
-function renderPasses() {
-  document.querySelectorAll("#satElChips button").forEach(b => b.classList.toggle("on", +b.dataset.el === satMinEl));
-  const box = document.getElementById("satList"), st = document.getElementById("satStatus");
-  if (HOME.unset) { box.innerHTML = `<div class="satempty">Set your grid square to see passes over your station.</div>`; st.textContent = ""; return; }
-  if (!satLib) return;
-  const now = Date.now();
-  const all = passes.filter(p => p.maxEl >= satMinEl && p.los > now);
-  const list = all.slice(0, satShowAll ? 15 : 5);
-  const more = document.getElementById("satMore");
-  more.hidden = all.length <= 5;
-  more.textContent = satShowAll ? "Show fewer passes" : "Show more passes";
-  st.textContent = list.length ? `Next 24 hours · times are local` : "";
-  box.innerHTML = list.length ? list.map(p => {
-    const live = p.aos <= now, s = p.sat;
-    const elCls = p.maxEl >= 45 ? "great" : p.maxEl >= 20 ? "good" : "";
-    const dur = Math.round((p.los - p.aos) / 60000);
-    let sunNote = "";
-    if (s.sunOnly && p.sunFrac === 0) sunNote = "In Earth's shadow for this whole pass, so it's likely off.";
-    else if (s.sunOnly && p.sunFrac < 1) sunNote = "Part of this pass is in Earth's shadow. It only works while sunlit.";
-    else if (s.shadeOnly && p.sunFrac === 1) sunNote = "In sunlight for this whole pass, so the transponder is likely off.";
-    else if (s.shadeOnly && p.sunFrac > 0) sunNote = "Part of this pass is in sunlight. The transponder only runs in Earth's shadow.";
-    if (sunNote) sunNote = `<div class="note warnnote">⚠️ ${sunNote}</div>`;
-    const open = live || satSel === s.id;
-    return `<div class="pass ${live ? "live" : ""} ${satSel === s.id ? "sel" : ""} ${open ? "open" : ""}" data-id="${s.id}" role="button" tabindex="0" aria-expanded="${open}">
-      <div class="pname">${esc(s.name)} <span class="mode ${s.type === "Linear" ? "lin" : ""}">${s.type}</span>${sunNote ? `<span class="flag" title="See note">⚠️</span>` : ""}<span class="chev">${open ? "▲" : "▼"}</span></div>
+const shortCount = ms => {                // "23m", "1h 32m", "4:35"
+  const s = Math.max(0, Math.round(ms / 1000)), hh = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60);
+  return hh ? `${hh}h ${m}m` : m >= 10 ? `${m}m` : `${m}:${String(s % 60).padStart(2, "0")}`;
+};
+function passWindow(now) {
+  const until = now + satWin * 3600e3;
+  return passes.filter(p => p.los > now && p.aos <= until);
+}
+function passRow(p, now) {
+  const live = p.aos <= now, s = p.sat;
+  const elCls = p.maxEl >= 45 ? "great" : p.maxEl >= 20 ? "good" : "";
+  const dur = Math.round((p.los - p.aos) / 60000);
+  let sunNote = "";
+  if (s.sunOnly && p.sunFrac === 0) sunNote = "In Earth's shadow for this whole pass, so it's likely off.";
+  else if (s.sunOnly && p.sunFrac < 1) sunNote = "Part of this pass is in Earth's shadow. It only works while sunlit.";
+  else if (s.shadeOnly && p.sunFrac === 1) sunNote = "In sunlight for this whole pass, so the transponder is likely off.";
+  else if (s.shadeOnly && p.sunFrac > 0) sunNote = "Part of this pass is in sunlight. The transponder only runs in Earth's shadow.";
+  const open = satSel === s.id;
+  return `<div class="pass ${live ? "live" : ""} ${satSel === s.id ? "sel" : ""} ${open ? "open" : ""}" data-id="${s.id}" role="button" tabindex="0" aria-expanded="${open}">
+    <div class="row">
       <div class="when" data-aos="${p.aos}" data-los="${p.los}">${live
-        ? `<b>On now</b><span>${countdown(p.los - now)} left</span>`
-        : `<b>${hm(p.aos)}</b><span>in ${countdown(p.aos - now)}</span>`}</div>
+        ? `<b>On now</b><span>${shortCount(p.los - now)} left</span>`
+        : `<b>${hm(p.aos)}</b><span>in ${shortCount(p.aos - now)}</span>`}</div>
+      <div class="pname">${esc(s.name)}<span class="mode ${s.type === "Linear" ? "lin" : ""}">${s.type === "Linear" ? "LIN" : "FM"}</span>${sunNote ? `<span class="flag" title="${esc(sunNote)}">⚠️</span>` : ""}</div>
+      <div class="el ${elCls}" title="Highest point">${Math.round(p.maxEl)}°</div>
+      <div class="chev">${open ? "▲" : "▼"}</div>
+    </div>
+    <div class="details">
       <div class="facts">
-        <span>Max <b class="el ${elCls}">${Math.round(p.maxEl)}°</b></span>
         <span><b>${dur} min</b></span>
         <span>${compass(p.azAos)} → ${compass(p.azMax)} → ${compass(p.azLos)}</span>
         <span>${hm(p.aos)}–${hm(p.los)}</span>
       </div>
-      <div class="details">
-        <div class="freq">↑ Up ${s.up}</div>
-        <div class="freq">↓ Down ${s.down}</div>
-        ${s.beacon ? `<div class="freq">Beacon ${s.beacon}</div>` : ""}
-        ${s.note ? `<div class="note">${esc(s.note)}</div>` : ""}${sunNote}
-      </div>
-    </div>`;
-  }).join("") : `<div class="satempty">No passes above ${satMinEl}° in the next 24 hours.</div>`;
+      <div class="freq">↑ Up ${s.up}</div>
+      <div class="freq">↓ Down ${s.down}</div>
+      ${s.beacon ? `<div class="freq">Beacon ${s.beacon}</div>` : ""}
+      ${s.note ? `<div class="note">${esc(s.note)}</div>` : ""}${sunNote ? `<div class="note warnnote">⚠️ ${sunNote}</div>` : ""}
+    </div>
+  </div>`;
+}
+function renderPasses() {
+  document.querySelectorAll("#satWinChips button").forEach(b => b.classList.toggle("on", +b.dataset.h === satWin));
+  const box = document.getElementById("satList"), st = document.getElementById("satStatus");
+  if (HOME.unset) { box.innerHTML = `<div class="satempty">Set your grid square to see passes over your station.</div>`; st.textContent = ""; return; }
+  if (!satLib) return;
+  const now = Date.now(), list = passWindow(now);
+  satListKey = list.map(p => p.sat.id + ":" + p.aos).join(",");
+  st.textContent = "Times are local · max height shown";
+  let html = list.map(p => passRow(p, now)).join("");
+  if (!list.length) {
+    const next = passes.find(p => p.los > now);
+    html = next
+      ? `<div class="satnext">No passes in the next ${satWin === 1 ? "hour" : satWin + " hours"}. The next one:</div>` + passRow(next, now)
+      : `<div class="satempty">No passes in the next 24 hours.</div>`;
+  }
+  box.innerHTML = html;
   box.querySelectorAll(".pass").forEach(el => {
     const pick = () => { satSel = +el.dataset.id === satSel ? null : +el.dataset.id; renderPasses(); drawSatMap(); };
     el.onclick = pick;
@@ -1930,13 +1947,12 @@ function tickPasses() {                  // countdowns, once a second
   document.querySelectorAll("#satList .when").forEach(w => {
     const aos = +w.dataset.aos, los = +w.dataset.los;
     if (aos <= now && !w.closest(".pass").classList.contains("live")) changed = true;
-    else w.querySelector("span").textContent = aos <= now ? `${countdown(los - now)} left` : `in ${countdown(aos - now)}`;
+    else w.querySelector("span").textContent = aos <= now ? `${shortCount(los - now)} left` : `in ${shortCount(aos - now)}`;
   });
-  if (changed) renderPasses();
+  if (changed || passWindow(now).map(p => p.sat.id + ":" + p.aos).join(",") !== satListKey) renderPasses();
 }
-document.getElementById("satMore").onclick = () => { satShowAll = !satShowAll; renderPasses(); };
-document.querySelectorAll("#satElChips button").forEach(b => b.onclick = () => {
-  satMinEl = +b.dataset.el; try { localStorage.setItem("hamdash.satel", satMinEl); } catch {}
+document.querySelectorAll("#satWinChips button").forEach(b => b.onclick = () => {
+  satWin = +b.dataset.h; try { localStorage.setItem("hamdash.satwin", satWin); } catch {}
   renderPasses();
 });
 
