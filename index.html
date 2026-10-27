@@ -55,13 +55,6 @@
   .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-top: 8px; }
   .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
   .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
-  .clocks { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-  .clock { background: var(--inset); border-radius: 8px; padding: 8px 10px; }
-  .clock .t { font: 600 22px/1.2 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
-  .clock.big { grid-column: span 2; }
-  .clock.big .t { font-size: 34px; color: var(--accent); }
-  .clock .l { font-size: 12px; color: var(--muted); }
-  @media (min-width: 900px) { .clocks { grid-template-columns: repeat(4, 1fr); } .clock.big { grid-column: span 2; } }
   .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .stat { background: var(--inset); border-radius: 8px; padding: 8px; text-align: center; }
   .stat .v { font: 600 24px/1.2 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
@@ -100,15 +93,44 @@
   .setupform button[hidden] { display: none; }
   #homeErr:empty { display: none; }
   .linkbtn { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; font-size: 12px; cursor: pointer; text-decoration: underline; }
-  .wxrow { display: flex; align-items: center; gap: 12px 20px; flex-wrap: wrap; }
-  .wxnow { display: flex; align-items: center; gap: 10px; min-width: 150px; }
-  .wxicon { font-size: 32px; line-height: 1; width: 40px; text-align: center; }
-  .wxtemp { font: 600 28px/1.1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
-  .wxgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; flex: 2 1 380px; }
-  .wxgrid div { background: var(--inset); border-radius: 8px; padding: 6px 8px; display: flex; flex-direction: column; font-variant-numeric: tabular-nums; }
-  .wxgrid .l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
-  .wxside { flex: 1 1 200px; font-size: 14px; }
-  @media (max-width: 600px) { .wxgrid { grid-template-columns: 1fr 1fr; } }
+  .stationbox { display: flex; flex-direction: column; gap: 10px; }
+  .sttop { display: flex; align-items: center; gap: 10px 22px; flex-wrap: wrap; }
+  .sttop .who { flex: 1 1 auto; min-width: 0; }
+  .stclock { flex: 0 0 auto; }
+  .stclock .l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; white-space: nowrap; }
+  .stclock .t { font: 600 30px/1.1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .stclock .t.utc { color: var(--sat); }
+  .stclock .t small { font-size: 15px; font-weight: 600; color: var(--muted); margin-left: 4px; }
+  .stationbox .stgrid { display: flex; align-items: center; gap: 8px; }
+  .stwx { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 18px; border-top: 1px solid var(--line); padding-top: 10px; font-size: 14px; }
+  .stwx .wxnow { display: flex; align-items: baseline; gap: 8px; }
+  .stwx .wxicon { font-size: 20px; line-height: 1; align-self: center; }
+  .stwx .wxtemp { font: 700 20px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  .stwx .wxtext { color: var(--text); }
+  .wxstats { display: flex; flex-wrap: wrap; gap: 4px 14px; font-variant-numeric: tabular-nums; }
+  .wxstats .l { color: var(--muted); font-size: 12px; }
+  .wxside { flex: 1 1 100%; color: var(--muted); font-size: 13px; }
+  .wxside #wxFc { color: var(--text); }
+  @media (min-width: 900px) { .wxside { flex: 1 1 auto; text-align: right; } }
+  @media (max-width: 700px) {
+    .sttop { display: grid; grid-template-columns: 1fr 1fr; grid-template-areas: "call grid" "name name" "utc local"; gap: 2px 12px; }
+    .sttop .who { display: contents; }
+    .sttop .callsign { grid-area: call; align-self: center; }
+    .sttop .opline { grid-area: name; }
+    .sttop .stgrid { grid-area: grid; justify-self: end; }
+    .sttop .stclock:nth-of-type(2) { grid-area: utc; margin-top: 10px; }
+    .sttop .stclock:nth-of-type(3) { grid-area: local; margin-top: 10px; }
+    .wxstats { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 12px; width: 100%; }
+    .wxside #wxWhere { display: block; }
+  }
+  @media (min-width: 701px) {
+    .sttop .who { flex: 1 1 0; }
+    .sttop .stgrid { flex: 1 1 0; justify-content: flex-end; }
+    .stclock .t { font-size: 38px; }
+    .stclock .t small { font-size: 18px; }
+  }
+  @media (max-width: 380px) { .stationbox .callsign:not(.nocall), .stclock .t { font-size: 26px; } .sttop { column-gap: 8px; } }
+  @media (max-width: 340px) { .stationbox .callsign:not(.nocall), .stclock .t { font-size: 22px; } .stclock .t small { font-size: 12px; } }
   .wxalert { background: #3a1512; border: 1px solid var(--poor); color: #ffd7d1; border-radius: 8px; padding: 8px 10px; font-size: 13px; margin-bottom: 10px; }
   .wxalert[hidden] { display: none; }
   .wxalert b { color: #fff; }
@@ -148,13 +170,10 @@
   .morebtn[hidden] { display: none; }
   .satempty { color: var(--muted); font-size: 14px; padding: 8px 2px; }
   .setupform input.callin { width: 130px; }
-  .stationbox { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; }
-  .stationbox[hidden] { display: none; }
   .stationbox .callsign { font: 800 30px/1.1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--accent); letter-spacing: 1px; }
   .stationbox .callsign.nocall { font-size: 20px; color: var(--text); letter-spacing: 0; font-family: inherit; font-weight: 700; }
   .stationbox .opline { font-size: 15px; margin-top: 2px; }
   .stationbox .opline .cls { color: var(--muted); }
-  .stationbox .stgrid { display: flex; align-items: center; gap: 8px; }
   .gridchip { font: 600 15px ui-monospace, "SF Mono", Menlo, Consolas, monospace; background: var(--inset); border: 1px solid var(--line);
     border-radius: 999px; padding: 5px 12px; }
   .gridchip::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #ff4fa3; margin-right: 7px; vertical-align: 1px; }
@@ -290,7 +309,7 @@
 <body>
 <header>
   <h1>Ham<span>Dash</span></h1>
-  <div class="vnum">v1.7.1</div>
+  <div class="vnum">v1.8.1</div>
   <div class="sub" id="updated">Loading…</div>
   <div class="sub vdate">10/26/2026</div>
 </header>
@@ -315,14 +334,39 @@
 </div>
 
 <div class="grid">
-  <section class="panel full stationbox" id="stationBox" hidden>
-    <div class="who">
-      <div class="callsign" id="stCall"></div>
-      <div class="opline" id="stName"></div>
+  <section class="panel full stationbox" id="stationBox">
+    <div class="sttop">
+      <div class="who">
+        <div class="callsign" id="stCall"></div>
+        <div class="opline" id="stName"></div>
+      </div>
+      <div class="stclock">
+        <div class="l" id="utcLbl">UTC</div>
+        <div class="t utc" id="utcTime">–</div>
+      </div>
+      <div class="stclock">
+        <div class="l" id="locLbl">Local</div>
+        <div class="t" id="locTime">–</div>
+      </div>
+      <div class="stgrid">
+        <span class="gridchip" id="stGrid"></span>
+        <button class="resetbtn" id="homeEdit">Change</button>
+      </div>
     </div>
-    <div class="stgrid">
-      <span class="gridchip" id="stGrid"></span>
-      <button class="resetbtn" id="homeEdit">Change</button>
+    <div class="wxalert" id="wxAlert" hidden></div>
+    <div class="stwx">
+      <div class="wxnow">
+        <span class="wxicon" id="wxIcon" aria-hidden="true">–</span>
+        <span class="wxtemp" id="wxTemp">–</span>
+        <span class="wxtext" id="wxText">Loading weather…</span>
+      </div>
+      <div class="wxstats">
+        <span><span class="l">Wind</span> <span id="wxWind">–</span></span>
+        <span><span class="l">Humidity</span> <span id="wxRh">–</span></span>
+        <span><span class="l">Pressure</span> <span id="wxPress">–</span></span>
+        <span><span class="l">Dew pt</span> <span id="wxDew">–</span></span>
+      </div>
+      <div class="wxside"><span id="wxFc"></span> <span class="sub" id="wxWhere"></span></div>
     </div>
   </section>
   <section class="panel full">
@@ -458,30 +502,6 @@
     </div>
   </section>
 
-  <section class="panel full">
-    <h2>Clocks</h2>
-    <div class="clocks" id="clocks"></div>
-  </section>
-
-  <section class="panel full wxbar">
-    <div class="wxalert" id="wxAlert" hidden></div>
-    <div class="wxrow">
-      <div class="wxnow">
-        <div class="wxicon" id="wxIcon" aria-hidden="true">–</div>
-        <div><div class="wxtemp" id="wxTemp">–</div><div class="sub" id="wxText">Loading weather…</div></div>
-      </div>
-      <div class="wxgrid">
-        <div><span class="l">Wind</span><span id="wxWind">–</span></div>
-        <div><span class="l">Humidity</span><span id="wxRh">–</span></div>
-        <div><span class="l">Pressure</span><span id="wxPress">–</span></div>
-        <div><span class="l">Dew point</span><span id="wxDew">–</span></div>
-      </div>
-      <div class="wxside">
-        <div class="wxfc" id="wxFc"></div>
-        <div class="sub" id="wxWhere"></div>
-      </div>
-    </div>
-  </section>
 </div>
 
 <footer>
@@ -508,7 +528,6 @@ function applyHome(grid) {
   document.getElementById("homeLbl").textContent = HOME.grid;
   return true;
 }
-const ZONES = [];   // extra world clocks (city name + time zone) can be added here
 const SPOT_WINDOW_MIN = 30;    // how long a station stays on the map
 const DX_MILES = 3000;         // "DX" distance
 const DX_OPEN = 5;             // DX stations needed to tag a band as open
@@ -696,11 +715,18 @@ function fmt(tz, opts = {}) {
 function drawClocks() {
   const now = new Date();
   const day = new Intl.DateTimeFormat([], { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }).format(now);
-  const homeEl = sunElevation(HOME.lat, HOME.lon, subsolar(now));
-  let html = `<div class="clock big"><div class="l">UTC · ${day}</div><div class="t">${fmt("UTC")}</div></div>`;
-  html += `<div class="clock big"><div class="l">Local · ${homeEl > 0 ? "☀️ Daytime" : homeEl > -6 ? "🌅 Gray line" : "🌙 Night"} at your QTH</div><div class="t" style="color:var(--text)">${fmt(undefined, { hour12: true })}</div></div>`;
-  for (const z of ZONES) html += `<div class="clock"><div class="l">${z.label}</div><div class="t">${fmt(z.tz, { second: undefined })}</div></div>`;
-  document.getElementById("clocks").innerHTML = html;
+  document.getElementById("utcLbl").textContent = "UTC · " + day;
+  document.getElementById("utcTime").textContent = fmt("UTC");
+  let lbl = "Local";
+  if (!HOME.unset) {
+    const homeEl = sunElevation(HOME.lat, HOME.lon, subsolar(now));
+    lbl += homeEl > 0 ? " · ☀️ Day" : homeEl > -6 ? " · 🌅 Gray line" : " · 🌙 Night";
+  }
+  document.getElementById("locLbl").textContent = lbl;
+  const parts = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true }).formatToParts(now);
+  const main = parts.filter(p => p.type !== "dayPeriod").map(p => p.value).join("").trim();
+  const ap = parts.find(p => p.type === "dayPeriod");
+  document.getElementById("locTime").innerHTML = `${main}${ap ? `<small>${ap.value}</small>` : ""}`;
 }
 
 // ================= "Updated at" in the header =================
@@ -1780,7 +1806,6 @@ async function saveSetup() {
 }
 function renderStation() {
   const box = document.getElementById("stationBox");
-  if (HOME.unset) { box.hidden = true; return; }
   box.hidden = false;
   const c = document.getElementById("stCall");
   if (MY.call) { c.textContent = MY.call; c.className = "callsign"; }
@@ -1788,7 +1813,7 @@ function renderStation() {
   document.getElementById("stName").innerHTML = MY.call
     ? (MY.name ? `${esc(MY.name)}${MY.cls ? ` <span class="cls">· ${esc(MY.cls)}</span>` : ""}` : `<span class="cls">Licensed outside the US, or not in the FCC database</span>`)
     : `<span class="cls">Add your callsign to show it here.</span>`;
-  document.getElementById("stGrid").textContent = HOME.grid;
+  document.getElementById("stGrid").textContent = HOME.unset ? "No grid" : HOME.grid;
 }
 document.getElementById("homeForm").onsubmit = e => { e.preventDefault(); saveSetup(); };
 document.getElementById("homeEdit").onclick = () => openSetup(true);
@@ -1820,6 +1845,7 @@ function wxEmoji(text, isDay) {
   if (/rain|drizzle|shower/.test(t)) return "🌧️";
   if (/fog|mist|haze|smoke/.test(t)) return "🌫️";
   if (/overcast|cloudy/.test(t) && !/partly|mostly clear|mostly sunny/.test(t)) return "☁️";
+  if (/mostly (clear|sunny)|fair/.test(t)) return isDay ? "🌤️" : "🌙";
   if (/partly|mostly|few|scattered/.test(t)) return isDay ? "⛅" : "☁️";
   if (/wind|breez/.test(t)) return "💨";
   return isDay ? "☀️" : "🌙";
