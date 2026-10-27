@@ -353,7 +353,7 @@
 <body>
 <header>
   <h1>Ham<span>Dash</span></h1>
-  <div class="vnum">v1.9.1</div>
+  <div class="vnum">v1.9.2</div>
   <div class="sub" id="updated">Loading…</div>
   <div class="sub vdate">10/26/2026</div>
 </header>
@@ -1944,28 +1944,46 @@ try { WXLOC = JSON.parse(localStorage.getItem("hamdash.wxloc")) || {}; } catch {
 if (!["grid", "zip", "gps"].includes(WXLOC.mode)) WXLOC.mode = IS_PHONE ? "gps" : "grid";
 const saveWxLoc = () => { try { localStorage.setItem("hamdash.wxloc", JSON.stringify(WXLOC)); } catch {} };
 const wxLocMsg = t => { document.getElementById("wxLocMsg").textContent = t; };
-function gpsFix() {
-  return new Promise((res, rej) => {
-    if (!navigator.geolocation) return rej(new Error("no gps"));
-    navigator.geolocation.getCurrentPosition(
-      p => res({ lat: +p.coords.latitude.toFixed(3), lon: +p.coords.longitude.toFixed(3) }), rej,
-      { timeout: 12000, maximumAge: 15 * 60000 });
-  });
+// Ask the phone for a position. A quick, low-power try first; if that times out or can't get a fix
+// (common indoors), try again with full GPS and a longer wait. A "denied" answer is final.
+const gpsOnce = opts => new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, opts));
+async function gpsFix() {
+  if (!navigator.geolocation) throw Object.assign(new Error("no geolocation"), { code: 0 });
+  let p;
+  try { p = await gpsOnce({ timeout: 15000, maximumAge: 15 * 60000 }); }
+  catch (e) {
+    if (e.code === 1) throw e;
+    p = await gpsOnce({ enableHighAccuracy: true, timeout: 30000, maximumAge: 60 * 60000 });
+  }
+  return { lat: +p.coords.latitude.toFixed(3), lon: +p.coords.longitude.toFixed(3) };
+}
+// What the browser already knows about location permission: "granted", "prompt", "denied" or "unknown"
+async function gpsPermission() {
+  try { return (await navigator.permissions.query({ name: "geolocation" })).state; } catch { return "unknown"; }
+}
+function gpsErrorText(e) {
+  const code = e && e.code;
+  if (code === 1) return IS_PHONE && /iPhone|iPod/.test(navigator.userAgent)
+    ? "iPhone blocked location for HamDash (error 1). Open Settings › Apps › Safari › Location and choose Ask or Allow. Then fully close HamDash, reopen it, tap Use GPS and choose Allow. If it still fails, remove HamDash from your Home Screen and add it again; that resets its permissions."
+    : "Location is blocked for HamDash (error 1). Allow location for this site in your browser's settings, then try again.";
+  if (code === 2) return "Your phone couldn't get a location fix (error 2). Try again in a minute, or near a window.";
+  if (code === 3) return "GPS took too long to answer (error 3). Tap Use GPS to try again.";
+  return "This browser can't share its location. Use a ZIP code instead.";
 }
 async function wxTarget() {
   if (WXLOC.mode === "zip" && WXLOC.zipLat != null) return { lat: WXLOC.zipLat, lon: WXLOC.zipLon, src: "zip" };
-  if (WXLOC.mode === "gps") {
+  if (WXLOC.mode === "gps" && await gpsPermission() !== "denied") {
     try {
       const f = await gpsFix(); WXLOC.gpsLat = f.lat; WXLOC.gpsLon = f.lon; WXLOC.gpsOff = false; saveWxLoc();
       return { ...f, src: "gps" };
-    } catch {
-      WXLOC.gpsOff = true;
+    } catch (e) {
+      WXLOC.gpsOff = true; WXLOC.gpsErr = e && e.code;
       if (WXLOC.gpsLat != null) return { lat: WXLOC.gpsLat, lon: WXLOC.gpsLon, src: "gps" };
     }
   }
   return HOME.unset ? null : { lat: HOME.lat, lon: HOME.lon, src: WXLOC.mode === "gps" ? "gps-fallback" : "grid" };
 }
-const wxModeText = src => src === "zip" ? `ZIP ${WXLOC.zip}` : src === "gps" ? "GPS" : src === "gps-fallback" ? "your grid (GPS off)" : "your grid";
+const wxModeText = src => src === "zip" ? `ZIP ${WXLOC.zip}` : src === "gps" ? "GPS" : src === "gps-fallback" ? "your grid, GPS off" : "your grid";
 const stMenu = document.getElementById("stMenu"), stMenuBtn = document.getElementById("homeEdit");
 function toggleStMenu(open = stMenu.hidden) {
   stMenu.hidden = !open; stMenuBtn.setAttribute("aria-expanded", open);
@@ -1991,11 +2009,11 @@ document.getElementById("wxZipForm").onsubmit = async e => {
   } catch (err) { wxLocMsg(err.message === "404" ? `Couldn't find ZIP ${zip}.` : "Couldn't look up that ZIP right now. Try again in a minute."); }
 };
 document.getElementById("wxUseGps").onclick = async () => {
-  wxLocMsg("Finding your location…");
+  wxLocMsg("Finding your location… (this can take up to 30 seconds indoors)");
   try {
     const f = await gpsFix(); Object.assign(WXLOC, { mode: "gps", gpsLat: f.lat, gpsLon: f.lon, gpsOff: false });
     saveWxLoc(); toggleStMenu(false); loadWeather();
-  } catch { wxLocMsg("Location is off for HamDash. On iPhone: Settings › Privacy & Security › Location Services › Safari Websites › While Using."); }
+  } catch (e) { wxLocMsg(gpsErrorText(e)); }
 };
 document.getElementById("wxUseGrid").onclick = () => { WXLOC.mode = "grid"; saveWxLoc(); toggleStMenu(false); loadWeather(); };
 
