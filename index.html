@@ -170,6 +170,22 @@
   @keyframes spotalert { 50% { box-shadow: 0 0 0 2px #ff4fa3, 0 0 22px -2px #ff4fa3; } }
   @media (prefers-reduced-motion: reduce) { #mySpotsPanel.alerting { animation: none; box-shadow: 0 0 0 2px #ff4fa3; } }
   .myempty { color: var(--muted); font-size: 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .propwrap { overflow-x: auto; }
+  .propgrid { display: grid; grid-template-columns: 40px repeat(24, minmax(9px, 1fr)); gap: 2px; min-width: 300px; font-variant-numeric: tabular-nums; }
+  .propgrid .bl { font: 700 12px/20px ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--text); }
+  .propgrid .hl { font-size: 10px; color: var(--muted); text-align: left; white-space: nowrap; overflow: visible; height: 16px; }
+  .propgrid .c { height: 20px; border-radius: 3px; border: 0; padding: 0; cursor: pointer; background: var(--inset); }
+  .propgrid .c.g { background: var(--good); } .propgrid .c.f { background: var(--fair); }
+  .propgrid .c.p { background: var(--poor); opacity: .85; } .propgrid .c.x { background: #1a2633; }
+  .propgrid .c.now { box-shadow: 0 0 0 2px var(--text) inset; }
+  .propgrid .c.sel { outline: 2px solid #fff; outline-offset: 1px; position: relative; z-index: 1; }
+  .propgrid .c:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .propgrid .nowcol { color: var(--text); font-weight: 700; }
+  .propdetail { margin-top: 10px; font-size: 14px; min-height: 20px; }
+  .propdetail b { font-weight: 700; }
+  .propdetail .tagg { color: var(--good); } .propdetail .tagf { color: var(--fair); } .propdetail .tagp { color: var(--poor); } .propdetail .tagx { color: var(--muted); }
+  .proplegend i.pg { background: var(--good); } .proplegend i.pf { background: var(--fair); } .proplegend i.pp { background: var(--poor); } .proplegend i.pc { background: #1a2633; border: 1px solid var(--line); }
+  .proplegend i { border-radius: 3px; }
   .warn { display: none; max-width: 1200px; margin: 0 auto 12px; background: #2a1714; border: 1px solid var(--poor);
     border-radius: 10px; padding: 10px 14px; font-size: 14px; }
   .warn.on { display: block; }
@@ -231,7 +247,7 @@
 <body>
 <header>
   <h1>Ham<span>Dash</span></h1>
-  <div class="vnum">v1.4.1</div>
+  <div class="vnum">v1.5.0</div>
   <div class="sub" id="updated">Loading…</div>
   <div class="sub vdate">10/25/2026</div>
 </header>
@@ -287,6 +303,25 @@
       <span class="sub" id="bandsWhen"></span>
     </div>
     <div class="bandgrid" id="bands"></div>
+  </section>
+
+  <section class="panel full" id="propPanel">
+    <div class="panelhead">
+      <h2>Propagation forecast</h2>
+      <div class="seg" id="propMode">
+        <button data-m="SSB">SSB</button>
+        <button data-m="CW">CW</button>
+      </div>
+    </div>
+    <div class="chips" id="propRegions"></div>
+    <div class="propwrap">
+      <div class="propgrid" id="propGrid" role="grid" aria-label="Band forecast for the next 24 hours"></div>
+    </div>
+    <div class="propdetail" id="propDetail"></div>
+    <div class="legend proplegend">
+      <span><i class="pg"></i>Good</span><span><i class="pf"></i>Fair</span><span><i class="pp"></i>Poor</span><span><i class="pc"></i>Closed</span>
+      <span class="sub" id="propStatus"></span>
+    </div>
   </section>
 
   <section class="panel full">
@@ -625,6 +660,7 @@ async function loadSolar() {
   const results = await Promise.allSettled(jobs);
   const failed = results.filter(r => r.status === "rejected").length;
   renderSolar(); renderBands();
+  if (typeof runPropForecast === "function" && propData && S.sfi && Math.abs(S.sfi - propData.sfi) >= 5) runPropForecast();
   if (failed < 3) lastUpdate = new Date();
   if (failed === 3 && isFile) document.getElementById("fileWarn").classList.add("on");
   document.getElementById("updated").innerHTML = failed
@@ -1361,7 +1397,7 @@ function useHome(grid) {
   applyHome(grid);
   try { localStorage.setItem("hamdash.home", HOME.grid); } catch {}
   for (const s of stations.values()) s.dist = Math.round(miles(HOME, s.loc));
-  drawGrayMap(); rebuildActBase(); drawClocks(); renderActivity(); loadWeather(); computePasses(); drawSatMap();
+  drawGrayMap(); rebuildActBase(); drawClocks(); renderActivity(); loadWeather(); computePasses(); drawSatMap(); runPropForecast(true);
 }
 const GRID_RE = /^[A-Ra-r]{2}\d{2}([A-Xa-x]{2})?$/;
 async function saveSetup() {
@@ -1509,6 +1545,192 @@ async function loadWeather() {
     wxSet("wxText", e.message === "404" ? "NOAA weather covers US locations only." : "Weather couldn't load. Retrying in 10 min.");
   }
 }
+
+// ================= Propagation forecast (VOACAP) =================
+// The MUF figures (FOT / MUF / HPF: open on 90% / 50% / 10% of days) come from VOACAP's ionosphere model,
+// using the open-source dvoacap engine run in a background worker with Pyodide.
+// The low end of each band uses VOACAP's D-layer absorption formula.
+const PROP_REGIONS = [
+  { id: "EU", name: "Europe", lat: 50, lon: 10 },
+  { id: "JA", name: "Japan", lat: 36, lon: 138 },
+  { id: "AS", name: "SE Asia", lat: 13, lon: 101 },
+  { id: "OC", name: "Australia/NZ", lat: -31, lon: 148 },
+  { id: "SA", name: "South America", lat: -23, lon: -47 },
+  { id: "AF", name: "Africa", lat: -26, lon: 28 },
+  { id: "CB", name: "Caribbean", lat: 18, lon: -70 },
+  { id: "W6", name: "US West Coast", lat: 37, lon: -121 },
+];
+const PROP_BANDS = [["80m", 3.6], ["40m", 7.15], ["30m", 10.125], ["20m", 14.15], ["17m", 18.118], ["15m", 21.2], ["12m", 24.94], ["10m", 28.5]];
+let propRegion = "EU", propMode = "SSB", propData = null, propSel = null, propKey = "", propState = "idle", propWorker = null;
+try { propRegion = localStorage.getItem("hamdash.propregion") || "EU"; propMode = localStorage.getItem("hamdash.propmode") || "SSB"; } catch {}
+if (!PROP_REGIONS.some(r => r.id === propRegion)) propRegion = "EU";
+if (propMode !== "CW") propMode = "SSB";
+
+const PROP_WORKER_SRC = `
+let ready = null;
+async function boot() {
+  importScripts("https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js");
+  const py = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/" });
+  await py.loadPackage(["numpy", "micropip"]);
+  await py.runPythonAsync('import micropip\\nawait micropip.install("dvoacap==1.0.2", deps=False)');
+  py.runPython([
+    "from dvoacap.prediction_engine import PredictionEngine",
+    "from dvoacap.path_geometry import GeoPoint",
+    "eng = PredictionEngine()",
+    "def muf_grid(lat, lon, ssn, month, hour0, regions):",
+    "    eng.params.ssn = ssn; eng.params.month = month",
+    "    eng.params.tx_location = GeoPoint.from_degrees(lat, lon)",
+    "    out = []",
+    "    for (rlat, rlon) in regions:",
+    "        row = []",
+    "        for k in range(24):",
+    "            h = (hour0 + k) % 24",
+    "            try:",
+    "                eng.predict(rx_location=GeoPoint.from_degrees(rlat, rlon), utc_time=(h + 0.5) / 24.0, frequencies=[14.15])",
+    "                cm = eng.circuit_muf",
+    "                f2 = cm.muf_info.get('F2') if isinstance(cm.muf_info, dict) else None",
+    "                hops = int(getattr(f2, 'hop_count', 0) or 0) if f2 else 0",
+    "                row.append([float(cm.fot), float(cm.muf), float(cm.hpf), hops])",
+    "            except Exception:",
+    "                row.append([0.0, 0.0, 0.0, 0])",
+    "        out.append(row)",
+    "    return out",
+  ].join("\\n"));
+  return py;
+}
+onmessage = async e => {
+  try {
+    ready = ready || boot();
+    const py = await ready;
+    const { lat, lon, ssn, month, hour0, regions } = e.data;
+    const fn = py.globals.get("muf_grid");
+    const res = fn(lat, lon, ssn, month, hour0, py.toPy(regions));
+    const data = res.toJs(); res.destroy(); fn.destroy();
+    postMessage({ ok: true, data });
+  } catch (err) { ready = null; postMessage({ ok: false, error: String(err && err.message || err).slice(0, 300) }); }
+};`;
+
+// SSN from 10.7 cm solar flux (ITU-R relation)
+const ssnFromSfi = sfi => Math.max(0, (-0.728 + Math.sqrt(0.728 ** 2 - 4 * 0.00089 * (63.7 - sfi))) / (2 * 0.00089));
+
+function runPropForecast(force) {
+  if (HOME.unset) { propState = "nohome"; renderProp(); return; }
+  const sfi = S.sfi || 100, ssn = Math.round(ssnFromSfi(sfi));
+  const now = new Date(), hour0 = now.getUTCHours();
+  const key = [HOME.lat.toFixed(2), HOME.lon.toFixed(2), ssn, now.getUTCMonth(), now.toISOString().slice(0, 13)].join("|");
+  if (!force && key === propKey && propData) return;
+  if (propState === "running") { runPropForecast.again = true; return; }
+  propState = propData ? "updating" : "loading"; renderProp();
+  propState = "running";
+  try { propWorker = propWorker || new Worker(URL.createObjectURL(new Blob([PROP_WORKER_SRC], { type: "text/javascript" }))); }
+  catch (e) { propState = "error"; renderProp(); return; }
+  const started = Date.now();
+  propWorker.onmessage = ev => {
+    propState = ev.data.ok ? "ok" : "error";
+    if (ev.data.ok) {
+      propKey = key;
+      propData = { hour0, t0: Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), hour0), ssn, sfi,
+        grid: Object.fromEntries(PROP_REGIONS.map((r, i) => [r.id, ev.data.data[i]])) };
+    } else console.warn("Forecast failed", ev.data.error);
+    renderProp();
+    if (runPropForecast.again) { runPropForecast.again = false; runPropForecast(); }
+  };
+  propWorker.onerror = e => { console.warn("Forecast worker error", e.message); propState = "error"; renderProp(); };
+  propWorker.postMessage({ lat: HOME.lat, lon: HOME.lon, ssn, month: now.getUTCMonth() + 1, hour0,
+    regions: PROP_REGIONS.map(r => [r.lat, r.lon]) });
+}
+
+// Great-circle point a fraction of the way from a to b
+function gcPoint(a, b, frac) {
+  const φ1 = rad(a.lat), λ1 = rad(a.lon), φ2 = rad(b.lat), λ2 = rad(b.lon);
+  const d = 2 * Math.asin(Math.sqrt(Math.sin((φ2 - φ1) / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin((λ2 - λ1) / 2) ** 2));
+  if (d < 1e-9) return { lat: a.lat, lon: a.lon };
+  const A = Math.sin((1 - frac) * d) / Math.sin(d), B = Math.sin(frac * d) / Math.sin(d);
+  const x = A * Math.cos(φ1) * Math.cos(λ1) + B * Math.cos(φ2) * Math.cos(λ2);
+  const y = A * Math.cos(φ1) * Math.sin(λ1) + B * Math.cos(φ2) * Math.sin(λ2);
+  const z = A * Math.sin(φ1) + B * Math.sin(φ2);
+  return { lat: deg(Math.atan2(z, Math.hypot(x, y))), lon: deg(Math.atan2(y, x)) };
+}
+// Total D-layer absorption (dB) along the path for one band at one moment, using VOACAP's absorption formula.
+// This sets the low end of what's usable: in daylight the lower bands get soaked up.
+function propAbsorption(region, f, hops, when, ssn) {
+  const R = 6371, H = 300, dKm = miles(HOME, region) * 1.609344;
+  hops = Math.max(hops || 1, Math.ceil(dKm / 4000));
+  const θ = dKm / R / hops;
+  const elev = Math.max(rad(3), Math.atan((Math.cos(θ / 2) - R / (R + H)) / Math.sin(θ / 2)));
+  const secI = Math.min(3.5, 1 / Math.sqrt(1 - (R * Math.cos(elev) / (R + 100)) ** 2));
+  const sun = subsolar(when);
+  let abs = 0;
+  for (let k = 0; k < hops; k++) for (const fr of [(k + 0.1) / hops, (k + 0.9) / hops]) {   // where each hop crosses the D layer
+    const p = gcPoint(HOME, region, fr), cz = Math.cos(0.881 * rad(90 - sunElevation(p.lat, p.lon, sun)));
+    const I = (1 + 0.0037 * ssn) * (cz > 0 ? cz ** 1.3 : 0) + 0.05;
+    abs += 0.5 * 677.2 * I * secI / ((f + 1.4) ** 1.98 + 10.2);
+  }
+  return { abs, hops };
+}
+// One cell: the MUF model sets the top of the usable range, absorption the bottom; very long paths are harder for 100 W.
+// CW gets about 15 dB more room than SSB, so it tolerates more absorption and longer paths.
+function propCell(regionId, k, band) {
+  const r = PROP_REGIONS.find(x => x.id === regionId), cell = propData.grid[regionId][k];
+  const [fot, muf, hpf, mhops] = cell, f = band[1];
+  if (!muf) return { lvl: "x", muf: 0 };
+  const when = new Date(propData.t0 + (k + 0.5) * 3600e3);
+  const { abs, hops } = propAbsorption(r, f, mhops, when, propData.ssn);
+  const slack = propMode === "CW" ? 15 : 0;
+  const ionoLvl = f <= fot ? 3 : f <= muf ? 2 : f <= hpf ? 1 : 0;           // above the MUF on most days = closed
+  const absLvl = abs <= 12 + slack ? 3 : abs <= 22 + slack ? 2 : abs <= 32 + slack ? 1 : 0;
+  const pathLvl = propMode === "CW" ? 3 : hops >= 4 ? 2 : 3;              // 4+ hops: SSB at 100 W is rarely better than fair
+  const lvl = Math.min(ionoLvl, absLvl, pathLvl);
+  return { lvl: ["x", "p", "f", "g"][lvl], muf, fot, hpf, hops, abs, ionoLvl, absLvl, pathLvl, when };
+}
+const PROP_WORD = { g: "Good", f: "Fair", p: "Poor", x: "Closed" };
+function renderProp() {
+  const regions = document.getElementById("propRegions");
+  regions.innerHTML = PROP_REGIONS.map(r => `<button data-r="${r.id}" class="${r.id === propRegion ? "on" : ""}" aria-pressed="${r.id === propRegion}">${r.name}</button>`).join("");
+  regions.querySelectorAll("button").forEach(b => b.onclick = () => {
+    propRegion = b.dataset.r; propSel = null; try { localStorage.setItem("hamdash.propregion", propRegion); } catch {}
+    renderProp();
+  });
+  document.querySelectorAll("#propMode button").forEach(b => b.classList.toggle("on", b.dataset.m === propMode));
+  const grid = document.getElementById("propGrid"), status = document.getElementById("propStatus"), detail = document.getElementById("propDetail");
+  if (propState === "nohome") { grid.innerHTML = ""; detail.textContent = "Set your station location to see the forecast."; status.textContent = ""; return; }
+  if (!propData) {
+    grid.innerHTML = "";
+    detail.innerHTML = propState === "error"
+      ? `<span class="err">Couldn't load the propagation model. It will try again in 10 minutes.</span>`
+      : "Loading the VOACAP propagation model… The first time takes a little longer (about 10 MB).";
+    status.textContent = ""; return;
+  }
+  const nowK = Math.min(23, Math.max(0, Math.floor((Date.now() - propData.t0) / 3600e3)));
+  if (!propSel || propSel.k > 23) propSel = { k: nowK, b: null };
+  const cells = PROP_BANDS.map(b => Array.from({ length: 24 }, (_, k) => propCell(propRegion, k, b)));
+  if (propSel.b == null) {                                  // default: the best band right now
+    let best = 3; for (let i = PROP_BANDS.length - 1; i >= 0; i--) if ("xpfg".indexOf(cells[i][propSel.k].lvl) > "xpfg".indexOf(cells[best][propSel.k].lvl)) best = i;
+    propSel.b = best;
+  }
+  const hourLbl = k => new Date(propData.t0 + k * 3600e3).toLocaleTimeString([], { hour: "numeric" }).replace(/\s?([AP])M/i, (m, a) => a.toLowerCase());
+  let html = `<div></div>` + Array.from({ length: 24 }, (_, k) =>
+    `<div class="hl ${k === nowK ? "nowcol" : ""}">${k === nowK ? "now" : k % 3 === 0 ? hourLbl(k) : ""}</div>`).join("");
+  for (let i = PROP_BANDS.length - 1; i >= 0; i--) {
+    html += `<div class="bl">${PROP_BANDS[i][0]}</div>` + cells[i].map((c, k) =>
+      `<button class="c ${c.lvl} ${k === nowK ? "now" : ""} ${propSel.k === k && propSel.b === i ? "sel" : ""}" data-k="${k}" data-b="${i}" aria-label="${PROP_BANDS[i][0]} at ${hourLbl(k)}: ${PROP_WORD[c.lvl]}"></button>`).join("");
+  }
+  grid.innerHTML = html;
+  grid.querySelectorAll(".c").forEach(el => el.onclick = () => { propSel = { k: +el.dataset.k, b: +el.dataset.b }; renderProp(); });
+  const c = cells[propSel.b][propSel.k], r = PROP_REGIONS.find(x => x.id === propRegion), band = PROP_BANDS[propSel.b][0];
+  const at = propSel.k === nowK ? "right now" : "at " + new Date(propData.t0 + propSel.k * 3600e3).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const lim = Math.min(c.ionoLvl, c.absLvl, c.pathLvl);
+  const why = c.lvl === "g" ? "" : c.ionoLvl === lim ? (c.ionoLvl === 0 ? " · band is above the MUF" : " · close to the MUF")
+    : c.absLvl === lim ? " · daytime absorption" : " · long multi-hop path";
+  detail.innerHTML = c.muf
+    ? `<b>${band}</b> to <b>${esc(r.name)}</b> ${at}: <b class="tag${c.lvl}">${PROP_WORD[c.lvl]}</b>${why}. MUF ${c.muf.toFixed(1)} MHz · ${c.hops} hop${c.hops > 1 ? "s" : ""} · ${Math.round(bearingTo(r))}° beam heading`
+    : `No forecast for ${esc(r.name)} at this hour.`;
+  status.textContent = `${propMode}, 100 W · SFI ${propData.sfi}${propState === "updating" ? " · updating…" : ""}`;
+}
+document.querySelectorAll("#propMode button").forEach(b => b.onclick = () => {
+  propMode = b.dataset.m; try { localStorage.setItem("hamdash.propmode", propMode); } catch {}
+  renderProp();
+});
 
 // ================= Satellite passes =================
 // Frequencies from AMSAT's FM and linear satellite pages (updated Oct 18, 2026). Orbits from CelesTrak.
@@ -1834,6 +2056,9 @@ loadGeo();
 loadSolar(); setInterval(loadSolar, 10 * 60000);
 loadWeather(); setInterval(loadWeather, 10 * 60000);
 showSatReset(); rebuildSatBase(); drawSatMap(); renderPasses();
+renderProp();
+setTimeout(() => runPropForecast(), 2500);                      // after the rest of the page is up
+setInterval(() => { runPropForecast(); renderProp(); }, 10 * 60000);
 renderStation(); renderMySpots();
 initSats(); setInterval(initSats, 10 * 60000);           // re-check orbits (cached 12 h) and recompute passes
 setInterval(() => { drawSatMap(); tickPasses(); }, 1000);
