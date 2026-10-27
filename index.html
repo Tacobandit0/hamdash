@@ -50,7 +50,7 @@
   #map, .mapwrap { max-width: 960px; margin-left: auto; margin-right: auto; }
   .full { grid-column: 1 / -1; }
   .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; min-width: 0; }
-  .panel h2 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); font-weight: 600; }
+  .panel h2 { margin: 0 0 10px; font-size: 16px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--accent); font-weight: 700; }
   .panelhead { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
   .panelhead h2 { margin: 0; }
   canvas { width: 100%; height: auto; display: block; border-radius: 6px; background: #123a57; }
@@ -348,16 +348,21 @@
   .potatip { border-color: var(--good); }
   .potatip .pc { font-weight: 700; color: var(--good); font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
   .potalegend { flex-wrap: nowrap; overflow: hidden; white-space: nowrap; }
-  .potafold { display: flex; align-items: center; gap: 8px; width: 100%; background: none; border: 0; border-top: 1px solid var(--line);
-    margin-top: 10px; padding: 10px 2px 2px; color: var(--muted); font: 700 12px/1 inherit; font-family: inherit; letter-spacing: .6px;
-    text-transform: uppercase; cursor: pointer; text-align: left; }
-  .potafold .fcount { background: var(--inset); border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; color: var(--text);
-    letter-spacing: 0; font-variant-numeric: tabular-nums; }
-  .potafold .fcount:empty { display: none; }
-  .potafold .chev { margin-left: auto; }
-  .potafold:hover { color: var(--text); }
-  .psched[hidden] { display: none; }
-  .psched { margin-top: 8px; }
+  .potatabs { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-top: 10px; }
+  .potatab { display: flex; align-items: center; gap: 8px; background: var(--inset); color: var(--text); border: 1px solid var(--line);
+    border-radius: 12px; padding: 9px 12px; font: 600 14px/1.2 inherit; font-family: inherit; cursor: pointer; text-align: left; min-width: 0; }
+  .potatab:hover { border-color: var(--muted); }
+  .potatab[aria-expanded="true"] { border-color: var(--accent); }
+  .potatab .tl { flex: 1; min-width: 0; }
+  .potatab .tc { background: var(--good); color: #0b1117; border-radius: 999px; padding: 2px 8px; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .potatab[data-t="soon"] .tc { background: var(--sat); }
+  .potatab .chev { color: var(--muted); font-size: 12px; }
+  @media (max-width: 700px) { .potatab { font-size: 13px; padding: 8px 10px; gap: 6px; } .potatab .tc { font-size: 12px; padding: 2px 7px; } }
+  .potapane { margin: 0 0 4px; }
+  .potapane[hidden] { display: none; }
+  #potaList { margin-top: 0; }
+  .psched { gap: 6px; }
+  .psched .ps { background: var(--inset); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
   #potaList { margin-top: 10px; }
   .tapinfo { margin-top: 8px; background: var(--inset); border: 1px solid var(--spot); border-radius: 10px; padding: 10px 12px; font-size: 15px; }
   .tapinfo[hidden] { display: none; }
@@ -395,7 +400,7 @@
 <body>
 <header>
   <h1>Ham<span>Dash</span></h1>
-  <div class="vnum">v1.11.0</div>
+  <div class="vnum">v1.12.2</div>
   <div class="sub" id="updated">Loading…</div>
   <div class="sub vdate">10/26/2026</div>
 </header>
@@ -574,12 +579,20 @@
       <span><i style="background:#ff4fa3"></i>Home</span>
       <span>Tap a dot for details · pinch to zoom</span>
     </div>
-    <div class="satlist" id="potaList"><div class="satempty">Checking who's on the air from parks…</div></div>
-    <button class="morebtn" id="potaMore" hidden></button>
-    <button type="button" class="potafold" id="potaSchedBtn" aria-expanded="false" aria-controls="potaSched">
-      <span>Coming up near you</span><span class="fcount" id="potaSchedCount"></span><span class="chev">▼</span>
-    </button>
-    <div class="psched" id="potaSched" hidden><div class="satempty">Checking scheduled activations…</div></div>
+    <div class="potatabs">
+      <button type="button" class="potatab" data-t="now" aria-expanded="false" aria-controls="potaNowPane">
+        <span class="tl">Current activations</span><b class="tc" id="potaNowCount">…</b><span class="chev">▼</span></button>
+      <div class="potapane" id="potaNowPane" hidden>
+        <div class="satlist" id="potaList"><div class="satempty">Checking who's on the air from parks…</div></div>
+        <button class="morebtn" id="potaMore" hidden></button>
+      </div>
+      <button type="button" class="potatab" data-t="soon" aria-expanded="false" aria-controls="potaSoonPane">
+        <span class="tl">Upcoming scheduled activations</span><b class="tc" id="potaSchedCount">…</b><span class="chev">▼</span></button>
+      <div class="potapane" id="potaSoonPane" hidden>
+        <div class="satnext" id="potaSoonNote"></div>
+        <div class="psched" id="potaSched"><div class="satempty">Checking scheduled activations…</div></div>
+      </div>
+    </div>
     <div class="myspotsbar" id="mySpotsPanel"><div id="mySpots"></div></div>
   </section>
 
@@ -1925,11 +1938,13 @@ function renderPOTA() {
     potaShowAll = false; renderPOTA();
   });
   if (!potaSpots) {
+    document.getElementById("potaNowCount").textContent = potaOk === false ? "–" : "…";
     listEl.innerHTML = potaOk === false ? `<div class="satempty err">Couldn't reach POTA. Retrying every minute.</div>` : `<div class="satempty">Checking who's on the air from parks…</div>`;
     more.hidden = true; return;
   }
   const rows = byMode.filter(r => potaBand === "all" || r.band === potaBand)
     .sort((a, b) => (a.dist ?? 1e9) - (b.dist ?? 1e9));
+  document.getElementById("potaNowCount").textContent = rows.length.toLocaleString();
   if (!rows.length) {
     listEl.innerHTML = `<div class="satempty">${all.length
       ? `Nobody on ${potaBand === "all" ? "" : potaBand + " "}${potaMode === "all" ? "" : potaMode + " "}right now. Try All bands or All modes.`
@@ -2092,6 +2107,7 @@ function potaTap(ev) {
   }
   const r = c.items[0], k = r.call + "|" + r.ref;
   potaOpen = k;
+  if (potaTab !== "now") setPotaTab("now");
   const all = potaRows().filter(x => (potaMode === "all" || potaModeCat(x.mode) === potaMode) && (potaBand === "all" || x.band === potaBand))
     .sort((a, b) => (a.dist ?? 1e9) - (b.dist ?? 1e9));
   if (all.findIndex(x => x.call + "|" + x.ref === k) >= POTA_ROWS) potaShowAll = true;
@@ -2135,18 +2151,21 @@ document.querySelectorAll("#potaSeg button").forEach(b => b.onclick = () => {
   try { localStorage.setItem("hamdash.potabox", JSON.stringify(PV)); } catch {}
   rebuildPotaBase(); potaRecluster();
 });
-// "Coming up near you" opens and closes; the choice is remembered
-let potaSchedOpen = false;
-try { potaSchedOpen = localStorage.getItem("hamdash.potasched") === "1"; } catch {}
-function setPotaSched(open) {
-  potaSchedOpen = open;
-  document.getElementById("potaSched").hidden = !open;
-  const btn = document.getElementById("potaSchedBtn");
-  btn.setAttribute("aria-expanded", open); btn.querySelector(".chev").textContent = open ? "▲" : "▼";
-  try { localStorage.setItem("hamdash.potasched", open ? "1" : "0"); } catch {}
+// Two bubbles under the map: "Current activations" and "Upcoming scheduled activations".
+// Tap one to open its list (only one open at a time); tap it again to close. The choice is remembered.
+let potaTab = null;
+try { const t = localStorage.getItem("hamdash.potatab"); if (t === "now" || t === "soon") potaTab = t; } catch {}
+function setPotaTab(t) {
+  potaTab = t;
+  document.querySelectorAll(".potatab").forEach(b => {
+    const on = b.dataset.t === t; b.setAttribute("aria-expanded", on); b.querySelector(".chev").textContent = on ? "▲" : "▼";
+  });
+  document.getElementById("potaNowPane").hidden = t !== "now";
+  document.getElementById("potaSoonPane").hidden = t !== "soon";
+  try { localStorage.setItem("hamdash.potatab", t || ""); } catch {}
 }
-document.getElementById("potaSchedBtn").onclick = () => setPotaSched(!potaSchedOpen);
-setPotaSched(potaSchedOpen);
+document.querySelectorAll(".potatab").forEach(b => b.onclick = () => setPotaTab(potaTab === b.dataset.t ? null : b.dataset.t));
+setPotaTab(potaTab);
 rebuildPotaBase();
 
 // Scheduled activations in the next two days, within POTA_NEAR_MI of home
@@ -2167,16 +2186,18 @@ async function loadPotaSched() {
 }
 function renderPotaSched() {
   const el = document.getElementById("potaSched");
-  if (potaSchedOk === false) { el.innerHTML = `<div class="satempty err">Couldn't load the POTA schedule. Retrying in 30 min.</div>`; return; }
+  if (potaSchedOk === false) { document.getElementById("potaSchedCount").textContent = "–"; el.innerHTML = `<div class="satempty err">Couldn't load the POTA schedule. Retrying in 30 min.</div>`; return; }
   if (!potaSoon) return;
-  if (HOME.unset) { el.innerHTML = `<div class="satempty">Set your grid square to see activations near you.</div>`; return; }
+  if (HOME.unset) { document.getElementById("potaSchedCount").textContent = "–"; el.innerHTML = `<div class="satempty">Set your grid square to see activations near you.</div>`; return; }
   const now = Date.now();
   const near = potaSoon.map(a => { const c = parkCache[a.reference]; return { ...a, dist: Math.round(miles(HOME, { lat: c[0], lon: c[1] })) }; })
-    .filter(a => a.dist <= POTA_NEAR_MI && a.end > now).sort((a, b) => a.start - b.start).slice(0, 4);
-  document.getElementById("potaSchedCount").textContent = near.length || "";
+    .filter(a => a.dist <= POTA_NEAR_MI && a.end > now).sort((a, b) => a.start - b.start);
+  document.getElementById("potaSoonNote").textContent = `Next 2 days, within ${POTA_NEAR_MI} miles of you`;
+  document.getElementById("potaSchedCount").textContent = near.length;
+  const shownSoon = near.slice(0, 15);
   if (!near.length) { el.innerHTML = `<div class="satempty">No activations scheduled within ${POTA_NEAR_MI} miles in the next 2 days.</div>`; return; }
   const when = t => t <= now ? "Now" : new Date(t).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" });
-  el.innerHTML = near.map(a => `<div class="ps ${a.start <= now ? "now" : ""}">
+  el.innerHTML = shownSoon.map(a => `<div class="ps ${a.start <= now ? "now" : ""}">
       <span class="pt">${when(a.start)}</span>
       <span class="pw"><b>${esc(a.activator)}</b> at ${esc(a.reference)} ${esc(a.name)}${a.frequencies ? ` · <span class="cls" style="color:var(--muted)">${esc(a.frequencies)}</span>` : ""}</span>
       <span class="pd">${a.dist.toLocaleString()} mi</span></div>`).join("");
