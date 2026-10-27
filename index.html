@@ -103,7 +103,23 @@
   .stclock .t { font: 600 30px/1.1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .stclock .t.utc { color: var(--sat); }
   .stclock .t small { font-size: 15px; font-weight: 600; color: var(--muted); margin-left: 4px; }
-  .stationbox .stgrid { display: flex; align-items: center; gap: 8px; }
+  .stationbox .stgrid { display: flex; align-items: center; gap: 8px; position: relative; }
+  #homeEdit[aria-expanded="true"] { border-color: var(--accent); }
+  .stmenu { position: absolute; top: calc(100% + 8px); right: 0; z-index: 40; width: 240px; max-width: calc(100vw - 40px);
+    background: var(--panel); border: 1px solid var(--accent); border-radius: 12px; padding: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.55);
+    display: flex; flex-direction: column; gap: 6px; }
+  .stmenu[hidden] { display: none; }
+  .stmenu .mh { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; }
+  .stmenu .mzip { display: flex; gap: 6px; }
+  .stmenu input { flex: 1; min-width: 0; background: var(--inset); color: var(--text); border: 1px solid var(--line); border-radius: 8px;
+    padding: 7px 10px; font: 600 15px ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  .stmenu .mzip button { background: var(--accent); border: 0; color: #0b1117; font: inherit; font-weight: 700; font-size: 14px; border-radius: 8px; padding: 7px 12px; cursor: pointer; }
+  .stmenu .mitem { text-align: left; background: var(--inset); color: var(--text); border: 1px solid var(--line); border-radius: 8px;
+    padding: 8px 10px; font: inherit; font-size: 14px; cursor: pointer; }
+  .stmenu .mitem:hover { border-color: var(--accent); }
+  .stmenu .mitem.on::after { content: "✓"; float: right; color: var(--good); font-weight: 700; }
+  .stmenu .mmsg { font-size: 12px; color: var(--muted); } .stmenu .mmsg:empty { display: none; }
+  .stmenu .msep { border-top: 1px solid var(--line); margin: 2px 0; }
   .stwx { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 18px; border-top: 1px solid var(--line); padding-top: 10px; font-size: 14px; }
   .stwx .wxnow { display: flex; align-items: baseline; gap: 8px; }
   .stwx .wxicon { font-size: 20px; line-height: 1; align-self: center; }
@@ -113,6 +129,7 @@
   .wxstats .l { color: var(--muted); font-size: 12px; }
   .wxside { flex: 1 1 100%; color: var(--muted); font-size: 13px; }
   .wxside #wxFc { color: var(--text); }
+
   @media (min-width: 900px) { .wxside { flex: 1 1 auto; text-align: right; } }
   @media (max-width: 700px) {
     .sttop { display: grid; grid-template-columns: 1fr 1fr; grid-template-areas: "call grid" "name name" "utc local"; gap: 2px 12px; }
@@ -123,7 +140,7 @@
     .sttop .stclock:nth-of-type(2) { grid-area: utc; margin-top: 10px; }
     .sttop .stclock:nth-of-type(3) { grid-area: local; margin-top: 10px; }
     .wxstats { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 12px; width: 100%; }
-    .wxside #wxWhere { display: block; }
+
   }
   @media (min-width: 701px) {
     .sttop .who { flex: 1 1 0; }
@@ -164,7 +181,7 @@
   .pass .chev { color: var(--muted); font-size: 11px; }
   .pass .flag { font-size: 12px; }
   .pass .details { display: none; gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
-  .pass.open .details { display: grid; }
+  .pass.open .details { display: grid; grid-template-columns: minmax(0, 1fr); }
   .pass .facts { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .pass .facts b { color: var(--text); font-weight: 600; }
   .pass .freq { font: 600 13px ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--text); overflow-wrap: anywhere; }
@@ -175,7 +192,8 @@
   .pass .pnotes:empty { display: none; }
   .pass .funfact { margin-left: auto; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     font-size: 12px; font-style: italic; color: var(--sat); }
-  @media (max-width: 380px) { .pass .funfact { font-size: 11px; } }
+  @media (max-width: 700px) { .wxside .wxwhere { display: block; margin-top: 2px; } }
+  @media (max-width: 700px) { .pass .funfact { white-space: normal; text-align: right; } }
   .pass .funfact b { font-style: normal; }
   .satnext { font-size: 13px; color: var(--muted); margin: 2px 2px 6px; }
   .morebtn { margin-top: 8px; width: 100%; background: var(--inset); color: var(--text); border: 1px solid var(--line); border-radius: 10px;
@@ -188,7 +206,7 @@
   .stationbox .opline { font-size: 15px; margin-top: 2px; }
   .stationbox .opline .cls { color: var(--muted); }
   .gridchip { font: 600 15px ui-monospace, "SF Mono", Menlo, Consolas, monospace; background: var(--inset); border: 1px solid var(--line);
-    border-radius: 999px; padding: 5px 12px; }
+    border-radius: 999px; padding: 5px 12px; white-space: nowrap; }
   .gridchip::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #ff4fa3; margin-right: 7px; vertical-align: 1px; }
   .stationbox .stnote { flex-basis: 100%; }
   .stationbox .stnote[hidden] { display: none; }
@@ -335,7 +353,7 @@
 <body>
 <header>
   <h1>Ham<span>Dash</span></h1>
-  <div class="vnum">v1.8.7</div>
+  <div class="vnum">v1.9.1</div>
   <div class="sub" id="updated">Loading…</div>
   <div class="sub vdate">10/26/2026</div>
 </header>
@@ -376,7 +394,19 @@
       </div>
       <div class="stgrid">
         <span class="gridchip" id="stGrid"></span>
-        <button class="resetbtn" id="homeEdit">Change</button>
+        <button class="resetbtn" id="homeEdit" aria-haspopup="true" aria-expanded="false" aria-controls="stMenu">Change</button>
+        <div class="stmenu" id="stMenu" hidden>
+          <div class="mh">Weather location</div>
+          <form class="mzip" id="wxZipForm">
+            <input id="wxZip" inputmode="numeric" pattern="[0-9]{5}" maxlength="5" placeholder="ZIP code" autocomplete="postal-code" aria-label="ZIP code">
+            <button type="submit">Set</button>
+          </form>
+          <button type="button" class="mitem" id="wxUseGps" data-mode="gps">📍 Use GPS</button>
+          <button type="button" class="mitem" id="wxUseGrid" data-mode="grid">🗺️ Use my grid square</button>
+          <div class="mmsg" id="wxLocMsg"></div>
+          <div class="msep"></div>
+          <button type="button" class="mitem" id="stEditStation">✏️ Edit callsign &amp; grid</button>
+        </div>
       </div>
     </div>
     <div class="wxalert" id="wxAlert" hidden></div>
@@ -392,7 +422,7 @@
         <span><span class="l">Pressure</span> <span id="wxPress">–</span></span>
         <span><span class="l">Dew pt</span> <span id="wxDew">–</span></span>
       </div>
-      <div class="wxside"><span id="wxFc"></span> <span class="sub" id="wxWhere"></span></div>
+      <div class="wxside"><span id="wxFc"></span> <span class="sub wxwhere" id="wxWhere"></span></div>
     </div>
   </section>
   <section class="panel full">
@@ -1873,7 +1903,6 @@ function renderStation() {
   document.getElementById("stGrid").textContent = HOME.unset ? "No grid" : HOME.grid;
 }
 document.getElementById("homeForm").onsubmit = e => { e.preventDefault(); saveSetup(); };
-document.getElementById("homeEdit").onclick = () => openSetup(true);
 document.getElementById("homeCancel").onclick = () => { setupEl.hidden = true; };
 document.getElementById("homeGeo").onclick = () => {
   if (!navigator.geolocation) { homeErr.textContent = "This browser can't share your location. Type your grid square instead."; return; }
@@ -1907,9 +1936,73 @@ function wxEmoji(text, isDay) {
   if (/wind|breez/.test(t)) return "💨";
   return isDay ? "☀️" : "🌙";
 }
+// Where the weather is for: your grid square (default on PC), a ZIP code, or GPS (default on iPhone).
+// Saved only on this device. GPS is rounded to about half a mile.
+const IS_PHONE = /iPhone|iPod|Android.+Mobile/.test(navigator.userAgent);
+let WXLOC = {};
+try { WXLOC = JSON.parse(localStorage.getItem("hamdash.wxloc")) || {}; } catch {}
+if (!["grid", "zip", "gps"].includes(WXLOC.mode)) WXLOC.mode = IS_PHONE ? "gps" : "grid";
+const saveWxLoc = () => { try { localStorage.setItem("hamdash.wxloc", JSON.stringify(WXLOC)); } catch {} };
+const wxLocMsg = t => { document.getElementById("wxLocMsg").textContent = t; };
+function gpsFix() {
+  return new Promise((res, rej) => {
+    if (!navigator.geolocation) return rej(new Error("no gps"));
+    navigator.geolocation.getCurrentPosition(
+      p => res({ lat: +p.coords.latitude.toFixed(3), lon: +p.coords.longitude.toFixed(3) }), rej,
+      { timeout: 12000, maximumAge: 15 * 60000 });
+  });
+}
+async function wxTarget() {
+  if (WXLOC.mode === "zip" && WXLOC.zipLat != null) return { lat: WXLOC.zipLat, lon: WXLOC.zipLon, src: "zip" };
+  if (WXLOC.mode === "gps") {
+    try {
+      const f = await gpsFix(); WXLOC.gpsLat = f.lat; WXLOC.gpsLon = f.lon; WXLOC.gpsOff = false; saveWxLoc();
+      return { ...f, src: "gps" };
+    } catch {
+      WXLOC.gpsOff = true;
+      if (WXLOC.gpsLat != null) return { lat: WXLOC.gpsLat, lon: WXLOC.gpsLon, src: "gps" };
+    }
+  }
+  return HOME.unset ? null : { lat: HOME.lat, lon: HOME.lon, src: WXLOC.mode === "gps" ? "gps-fallback" : "grid" };
+}
+const wxModeText = src => src === "zip" ? `ZIP ${WXLOC.zip}` : src === "gps" ? "GPS" : src === "gps-fallback" ? "your grid (GPS off)" : "your grid";
+const stMenu = document.getElementById("stMenu"), stMenuBtn = document.getElementById("homeEdit");
+function toggleStMenu(open = stMenu.hidden) {
+  stMenu.hidden = !open; stMenuBtn.setAttribute("aria-expanded", open);
+  if (open) {
+    document.getElementById("wxZip").value = WXLOC.zip || ""; wxLocMsg("");
+    stMenu.querySelectorAll("[data-mode]").forEach(b => b.classList.toggle("on", b.dataset.mode === WXLOC.mode));
+    document.getElementById("wxZipForm").classList.toggle("on", WXLOC.mode === "zip");
+  }
+}
+stMenuBtn.onclick = e => { e.stopPropagation(); toggleStMenu(); };
+document.addEventListener("pointerdown", e => { if (!stMenu.hidden && !stMenu.contains(e.target) && e.target !== stMenuBtn) toggleStMenu(false); }, true);
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !stMenu.hidden) toggleStMenu(false); });
+document.getElementById("stEditStation").onclick = () => { toggleStMenu(false); openSetup(true); };
+document.getElementById("wxZipForm").onsubmit = async e => {
+  e.preventDefault();
+  const zip = document.getElementById("wxZip").value.trim();
+  if (!/^\d{5}$/.test(zip)) { wxLocMsg("Enter a 5-digit US ZIP code."); return; }
+  wxLocMsg("Looking up " + zip + "…");
+  try {
+    const z = await getJSON(`https://api.zippopotam.us/us/${zip}`), pl = z.places[0];
+    Object.assign(WXLOC, { mode: "zip", zip, zipLat: +(+pl.latitude).toFixed(3), zipLon: +(+pl.longitude).toFixed(3) });
+    saveWxLoc(); toggleStMenu(false); loadWeather();
+  } catch (err) { wxLocMsg(err.message === "404" ? `Couldn't find ZIP ${zip}.` : "Couldn't look up that ZIP right now. Try again in a minute."); }
+};
+document.getElementById("wxUseGps").onclick = async () => {
+  wxLocMsg("Finding your location…");
+  try {
+    const f = await gpsFix(); Object.assign(WXLOC, { mode: "gps", gpsLat: f.lat, gpsLon: f.lon, gpsOff: false });
+    saveWxLoc(); toggleStMenu(false); loadWeather();
+  } catch { wxLocMsg("Location is off for HamDash. On iPhone: Settings › Privacy & Security › Location Services › Safari Websites › While Using."); }
+};
+document.getElementById("wxUseGrid").onclick = () => { WXLOC.mode = "grid"; saveWxLoc(); toggleStMenu(false); loadWeather(); };
+
 async function loadWeather() {
-  if (HOME.unset) { wxSet("wxText", "Set your grid square to see weather"); return; }
-  const key = HOME.lat.toFixed(4) + "," + HOME.lon.toFixed(4);
+  const T = await wxTarget();
+  if (!T) { wxSet("wxText", "Set your grid square to see weather"); return; }
+  const key = T.lat.toFixed(4) + "," + T.lon.toFixed(4);
   try {
     if (!wxPoint || wxPoint.key !== key) {
       const pt = await getJSON(`${NWS}/points/${key}`);
@@ -1926,7 +2019,7 @@ async function loadWeather() {
         if (o && o.temperature && o.temperature.value != null) { obs = o; station = s; break; }
       } catch {}
     }
-    const isDay = sunElevation(HOME.lat, HOME.lon, subsolar(new Date())) > 0;
+    const isDay = sunElevation(T.lat, T.lon, subsolar(new Date())) > 0;
     if (obs) {
       const v = q => q && q.value != null ? q.value : null;
       const tC = v(obs.temperature), dC = v(obs.dewpoint), w = v(obs.windSpeed), g = v(obs.windGust), dir = v(obs.windDirection);
@@ -1940,7 +2033,7 @@ async function loadWeather() {
       wxSet("wxPress", pa == null ? "–" : (pa / 3386.39).toFixed(2) + " inHg");
       wxSet("wxDew", dC == null ? "–" : C2F(dC) + "°F");
       const t = new Date(obs.timestamp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-      wxSet("wxWhere", `${wxPoint.where || station.name} · ${station.id} ${t}`);
+      wxSet("wxWhere", `${wxPoint.where || station.name} (${wxModeText(T.src)}) · ${station.id} ${t}`);
     } else {
       wxSet("wxText", "No recent report from nearby stations");
     }
