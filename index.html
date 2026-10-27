@@ -189,6 +189,44 @@
   .propdetail .tagg { color: var(--good); } .propdetail .tagf { color: var(--fair); } .propdetail .tagp { color: var(--poor); } .propdetail .tagx { color: var(--muted); }
   .proplegend i.pg { background: var(--good); } .proplegend i.pf { background: var(--fair); } .proplegend i.pp { background: var(--poor); } .proplegend i.pc { background: #1a2633; border: 1px solid var(--line); }
   .proplegend i { border-radius: 3px; }
+  .stats.six { grid-template-columns: repeat(6, 1fr); }
+  @media (max-width: 700px) { .stats.six { grid-template-columns: repeat(3, 1fr); } }
+  .stat .v .tr { font-size: 14px; margin-left: 3px; vertical-align: 2px; }
+  .tr.up { color: var(--good); } .tr.down { color: var(--poor); } .tr.flat { color: var(--muted); }
+  .stat .v.warnv { color: var(--fair); } .stat .v.badv { color: var(--poor); }
+  .swalert { margin-bottom: 10px; border-radius: 8px; padding: 8px 10px; font-size: 14px; background: #2a2210; border: 1px solid var(--fair); color: #ffe7a8; }
+  .swalert.red { background: #3a1512; border-color: var(--poor); color: #ffd7d1; }
+  .swalert[hidden], .swmore[hidden], .propplan[hidden] { display: none; }
+  .hfimpact { margin-top: 10px; font-size: 14px; line-height: 1.45; }
+  .hfimpact b { color: var(--accent); }
+  .swmore { margin-top: 10px; display: grid; gap: 10px; }
+  .swchartwrap { position: relative; }
+  #swChart { width: 100%; height: 170px; display: block; border-radius: 6px; background: var(--inset); }
+  #swSlider { width: 100%; accent-color: var(--accent); margin: 0; }
+  .swreadout { font-size: 14px; line-height: 1.45; background: var(--inset); border-radius: 8px; padding: 8px 10px; }
+  .swreadout .when { font-weight: 700; }
+  .swreadout .src { font-size: 12px; color: var(--muted); }
+  .swreadout .vals { font-variant-numeric: tabular-nums; }
+  .swreadout .planbtn { margin-top: 8px; }
+  .swlegend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; }
+  .swlegend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+  .swlegend i.kq { background: var(--good); } .swlegend i.ku { background: var(--fair); } .swlegend i.ks { background: var(--poor); }
+  .swlegend i.fl { background: var(--accent); height: 3px; vertical-align: 3px; } .swlegend i.fc { background: rgba(242,179,61,.18); border: 1px dashed var(--accent); }
+  .swcols { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 14px; align-items: start; }
+  @media (max-width: 700px) { .swcols { grid-template-columns: 1fr; } }
+  .swsub { font-size: 12px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); font-weight: 600; margin-bottom: 6px; }
+  .swoutlook table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .swoutlook th, .swoutlook td { padding: 5px 4px; border-bottom: 1px solid var(--line); text-align: center; }
+  .swoutlook th { color: var(--muted); font-weight: 600; font-size: 11px; }
+  .swoutlook td:first-child, .swoutlook th:first-child { text-align: left; }
+  .gtag { display: inline-block; min-width: 28px; border-radius: 4px; padding: 1px 5px; font-weight: 700; font-size: 12px; color: #0b1117; background: var(--good); }
+  .gtag.g1 { background: var(--fair); } .gtag.g2 { background: var(--poor); }
+  .swsun img { width: 100%; max-width: 220px; height: auto; aspect-ratio: 1; border-radius: 50%; display: block; background: #000; margin: 0 auto 8px; }
+  .swsun .chips { margin-bottom: 4px; justify-content: center; }
+  .swsun .sub { font-size: 12px; text-align: center; }
+  .swcycle { font-size: 12px; }
+  .propplan { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;
+    background: #2a2210; border: 1px solid var(--accent); border-radius: 8px; padding: 8px 10px; font-size: 14px; }
   .warn { display: none; max-width: 1200px; margin: 0 auto 12px; background: #2a1714; border: 1px solid var(--poor);
     border-radius: 10px; padding: 10px 14px; font-size: 14px; }
   .warn.on { display: block; }
@@ -250,7 +288,7 @@
 <body>
 <header>
   <h1>Ham<span>Dash</span></h1>
-  <div class="vnum">v1.6.0</div>
+  <div class="vnum">v1.7.0</div>
   <div class="sub" id="updated">Loading…</div>
   <div class="sub vdate">10/25/2026</div>
 </header>
@@ -332,12 +370,44 @@
   </section>
 
 
-  <section class="panel full">
-    <h2>Solar conditions</h2>
-    <div class="stats">
-      <div class="stat"><div class="l">Solar flux</div><div class="v" id="sfi">–</div><div class="n" id="sfiN"></div></div>
-      <div class="stat"><div class="l">Kp index</div><div class="v" id="kp">–</div><div class="n" id="kpN"></div></div>
+  <section class="panel full" id="solarPanel">
+    <div class="panelhead">
+      <h2>Solar conditions</h2>
+      <span class="sub" id="swAsOf"></span>
+    </div>
+    <div class="swalert" id="swAlert" hidden></div>
+    <div class="stats six">
+      <div class="stat"><div class="l">Solar flux</div><div class="v"><span id="sfi">–</span><span class="tr" id="sfiT"></span></div><div class="n" id="sfiN"></div></div>
+      <div class="stat"><div class="l">Sunspots</div><div class="v"><span id="ssn">–</span><span class="tr" id="ssnT"></span></div><div class="n" id="ssnN"></div></div>
+      <div class="stat"><div class="l">Kp index</div><div class="v"><span id="kp">–</span><span class="tr" id="kpT"></span></div><div class="n" id="kpN"></div></div>
       <div class="stat"><div class="l">X-ray</div><div class="v" id="xray">–</div><div class="n" id="xrayN"></div></div>
+      <div class="stat"><div class="l">Solar wind</div><div class="v" id="wind">–</div><div class="n" id="windN"></div></div>
+      <div class="stat"><div class="l">Bz</div><div class="v" id="bz">–</div><div class="n" id="bzN"></div></div>
+    </div>
+    <div class="hfimpact" id="hfNow"></div>
+    <button class="morebtn" id="swMore" aria-expanded="false" aria-controls="swMoreBody">Timeline, 3-day outlook and the Sun ▼</button>
+    <div class="swmore" id="swMoreBody" hidden>
+      <div class="swchartwrap"><canvas id="swChart" height="170" aria-label="Kp index and solar flux, past week and next 27 days"></canvas></div>
+      <input type="range" id="swSlider" min="0" max="100" value="0" step="1" aria-label="Pick a time on the timeline">
+      <div class="swreadout" id="swReadout"></div>
+      <div class="swlegend sub"><span><i class="kq"></i>Kp quiet</span><span><i class="ku"></i>Unsettled</span><span><i class="ks"></i>Storm</span><span><i class="fl"></i>Solar flux</span><span><i class="fc"></i>Forecast</span></div>
+      <div class="swcols">
+        <div>
+          <div class="swsub">Next 3 days (NOAA)</div>
+          <div class="swoutlook" id="swOutlook"></div>
+        </div>
+        <div class="swsun">
+          <div class="swsub">The Sun right now</div>
+          <a id="sunLink" href="https://sdo.gsfc.nasa.gov/data/" target="_blank" rel="noopener"><img id="sunImg" alt="Latest image of the Sun from NASA's Solar Dynamics Observatory" width="512" height="512"></a>
+          <div class="chips" id="sunChips">
+            <button data-w="0193">Coronal holes</button>
+            <button data-w="HMIIC">Sunspots</button>
+            <button data-w="0131">Flares</button>
+          </div>
+          <div class="sub" id="sunCap"></div>
+        </div>
+      </div>
+      <div class="sub swcycle" id="swCycle"></div>
     </div>
   </section>
 
@@ -374,6 +444,7 @@
         <button data-m="CW">CW</button>
       </div>
     </div>
+    <div class="propplan" id="propPlanBar" hidden></div>
     <div class="chips" id="propRegions"></div>
     <div class="propwrap">
       <div class="propgrid" id="propGrid" role="grid" aria-label="Band forecast for the next 24 hours"></div>
@@ -644,26 +715,59 @@ const S = { sfi: null, kp: null, xray: null };
 async function getJSON(url) { const r = await fetch(url, { cache: "no-store" }); if (!r.ok) throw new Error(r.status); return r.json(); }
 const isFile = location.protocol === "file:";
 
+// Space weather: everything below comes from NOAA's Space Weather Prediction Center (and the Sun image from NASA SDO).
+const SWPC = "https://services.swpc.noaa.gov";
+const SW = { kp: [], daily: [], outlook: [], scales: null, flare: null, wind: null, mag: null, cycle: null, loaded: false };
+async function getText(url) { const r = await fetch(url, { cache: "no-store" }); if (!r.ok) throw new Error(r.status); return r.text(); }
+const dayUTC = t => { const d = new Date(t); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()); };
+const MONTHS = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
+
 async function loadSolar() {
-  const base = "https://services.swpc.noaa.gov";
   const jobs = [
-    getJSON(base + "/json/f107_cm_flux.json").then(d => {
+    // Kp: the last 7 days measured, plus NOAA's 3-day forecast, in 3-hour steps
+    getJSON(SWPC + "/products/noaa-planetary-k-index-forecast.json").then(d => {
+      SW.kp = d.filter(r => r.kp != null).map(r => ({ t: Date.parse(r.time_tag + "Z"), kp: +r.kp, kind: r.observed }));
+      const past = SW.kp.filter(r => r.t <= Date.now());
+      if (past.length) S.kp = past[past.length - 1].kp;
+    }),
+    // solar flux right now (several readings a day)
+    getJSON(SWPC + "/json/f107_cm_flux.json").then(d => {
       const rows = d.filter(r => r.flux != null).sort((a, b) => new Date(a.time_tag) - new Date(b.time_tag));
       S.sfi = Math.round(+rows[rows.length - 1].flux);
     }),
-    getJSON(base + "/products/noaa-planetary-k-index.json").then(d => {
-      const last = d[d.length - 1];
-      S.kp = +(Array.isArray(last) ? last[1] : (last.Kp ?? last.kp_index ?? last.kp));
-    }),
-    getJSON(base + "/json/goes/primary/xrays-1-day.json").then(d => {
+    getJSON(SWPC + "/json/goes/primary/xrays-1-day.json").then(d => {
       const rows = d.filter(r => r.energy === "0.1-0.8nm" && r.flux > 0);
       S.xray = rows[rows.length - 1].flux;
     }),
   ];
+  const extras = [
+    // daily flux and sunspot number for the last 30 days
+    getText(SWPC + "/text/daily-solar-indices.txt").then(t => {
+      SW.daily = t.split("\n").filter(l => /^\d{4}\s+\d{1,2}\s+\d{1,2}\s/.test(l)).map(l => {
+        const f = l.trim().split(/\s+/);
+        return { t: Date.UTC(+f[0], +f[1] - 1, +f[2]), sfi: +f[3], ssn: +f[4] };
+      }).filter(r => r.sfi > 0);
+      const last = SW.daily[SW.daily.length - 1]; if (last) S.ssn = last.ssn;
+    }),
+    // NOAA's 27-day outlook: daily flux, Ap and largest Kp
+    getText(SWPC + "/text/27-day-outlook.txt").then(t => {
+      SW.outlook = t.split("\n").filter(l => /^\d{4}\s+[A-Z][a-z]{2}\s+\d{1,2}\s/.test(l)).map(l => {
+        const f = l.trim().split(/\s+/);
+        return { t: Date.UTC(+f[0], MONTHS[f[1]], +f[2]), sfi: +f[3], ap: +f[4], kpMax: +f[5] };
+      });
+    }),
+    getJSON(SWPC + "/products/noaa-scales.json").then(d => { SW.scales = d; }),
+    getJSON(SWPC + "/json/solar_probabilities.json").then(d => { SW.flare = d[0] || null; }),
+    getJSON(SWPC + "/products/summary/solar-wind-speed.json").then(d => { SW.wind = d[0] || null; }),
+    getJSON(SWPC + "/products/summary/solar-wind-mag-field.json").then(d => { SW.mag = d[0] || null; }),
+    SW.cycle ? Promise.resolve() : getJSON(SWPC + "/json/solar-cycle/predicted-solar-cycle.json").then(d => { SW.cycle = d; }),
+  ];
   const results = await Promise.allSettled(jobs);
+  await Promise.allSettled(extras);
+  SW.loaded = true;
   const failed = results.filter(r => r.status === "rejected").length;
   renderSolar(); renderBands();
-  if (typeof runPropForecast === "function" && propData && S.sfi && Math.abs(S.sfi - propData.sfi) >= 5) runPropForecast();
+  if (typeof runPropForecast === "function" && propData && !propPlan && S.sfi && Math.abs(S.sfi - propData.sfi) >= 5) runPropForecast();
   if (failed < 3) lastUpdate = new Date();
   if (failed === 3 && isFile) document.getElementById("fileWarn").classList.add("on");
   document.getElementById("updated").innerHTML = failed
@@ -675,15 +779,244 @@ function xrayClass(f) {
   const c = [["X", 1e-4], ["M", 1e-5], ["C", 1e-6], ["B", 1e-7], ["A", 1e-8]].find(([, t]) => f >= t) || ["A", 1e-8];
   return c[0] + (f / c[1]).toFixed(1);
 }
+const gLevel = kp => kp >= 8.67 ? 5 : kp >= 7.67 ? 4 : kp >= 6.67 ? 3 : kp >= 5.67 ? 2 : kp >= 4.67 ? 1 : 0;   // NOAA: Kp 5- counts as G1
+const kpColor = kp => kp >= 4.67 ? "--poor" : kp >= 4 ? "--fair" : "--good";
+const fmtDay = t => new Date(t).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+function trend(el, now, then, eps) {
+  el.className = "tr";
+  if (now == null || then == null) { el.textContent = ""; el.title = ""; return; }
+  const d = now - then;
+  el.classList.add(Math.abs(d) <= eps ? "flat" : d > 0 ? "up" : "down");
+  el.textContent = Math.abs(d) <= eps ? "→" : d > 0 ? "↑" : "↓";
+  el.title = Math.abs(d) <= eps ? "Steady" : d > 0 ? "Rising" : "Falling";
+}
+// Plain-English meaning for HF at a given moment
+function hfImpact({ sfi, kp, xray, bz, forecast }) {
+  const parts = [];
+  if (kp != null && kp >= 6.67) parts.push(`<b>Severe geomagnetic storm.</b> HF is badly disrupted, especially paths that cross the far north (Europe, Japan). North–south paths hold up best, and 6m/2m aurora is possible.`);
+  else if (kp != null && kp >= 4.67) parts.push(`<b>Geomagnetic storm.</b> Expect weak, fluttery signals on northern paths to Europe and Japan, and noisy low bands. South America and Africa usually hold up better. Watch 6m and 2m for aurora.`);
+  else if (kp != null && kp >= 4) parts.push(`<b>Unsettled field.</b> Northern paths may be weaker and low bands noisier than usual.`);
+  else if (kp != null) parts.push(`<b>Quiet magnetic field</b>, good for long northern paths like Europe and Japan.`);
+  if (sfi != null) {
+    if (sfi >= 150) parts.push(`Flux ${sfi} is high: 15m through 10m open widely in daylight, and 6m F2 openings are possible.`);
+    else if (sfi >= 120) parts.push(`Flux ${sfi} is good: 15m–10m work well in daylight and 20m stays open late.`);
+    else if (sfi >= 90) parts.push(`Flux ${sfi}: 20m–15m are the main daytime DX bands; 12m and 10m mostly north–south.`);
+    else parts.push(`Flux ${sfi} is low: 20m and 17m are the best daytime bands; 15m–10m are limited.`);
+  }
+  if (!forecast && xray != null && xray >= 1e-5) parts.push(`<b>Solar flare in progress (${xrayClass(xray)}):</b> daytime HF may fade out on the sunlit side for a while.`);
+  if (!forecast && bz != null && bz <= -10 && (kp == null || kp < 4.67)) parts.push(`<b>Bz is strongly south</b>, so storm conditions could develop over the next few hours.`);
+  return parts.join(" ");
+}
+// What's known (measured or forecast) at time t
+function swAt(t) {
+  const now = Date.now(), d = dayUTC(t);
+  const k3 = SW.kp.find(r => r.t <= t && t < r.t + 3 * 3600e3);
+  const daily = SW.daily.find(r => r.t === d), out = SW.outlook.find(r => r.t === d);
+  const kp = k3 ? k3.kp : out ? out.kpMax : null, kpDaily = !k3 && !!out;
+  const sfi = t <= now ? (daily ? daily.sfi : S.sfi) : (out ? out.sfi : null);
+  const src = t <= now ? "Measured" : k3 ? "NOAA 3-day forecast" : out ? "NOAA 27-day outlook (daily)" : "No forecast this far out";
+  return { t, kp, kpDaily, sfi, ssn: daily ? daily.ssn : null, src, forecast: t > now };
+}
 function renderSolar() {
   const set = (id, v) => document.getElementById(id).textContent = v;
   set("sfi", S.sfi ?? "–");
   set("sfiN", S.sfi == null ? "" : S.sfi >= 150 ? "Excellent" : S.sfi >= 120 ? "Good" : S.sfi >= 90 ? "Fair" : "Low");
   set("kp", S.kp == null ? "–" : S.kp.toFixed(1));
-  set("kpN", S.kp == null ? "" : S.kp < 3 ? "Quiet" : S.kp < 5 ? "Unsettled" : "Storm");
+  set("kpN", S.kp == null ? "" : S.kp < 4 ? "Quiet" : S.kp < 4.67 ? "Unsettled" : "Storm G" + gLevel(S.kp));
   set("xray", xrayClass(S.xray));
-  set("xrayN", S.xray == null ? "" : S.xray >= 1e-5 ? "Fade risk" : "Normal");
+  set("xrayN", S.xray == null ? "" : S.xray >= 1e-4 ? "Major flare" : S.xray >= 1e-5 ? "Fade risk" : "Normal");
+  set("ssn", S.ssn ?? "–");
+  set("ssnN", S.ssn == null ? "" : S.ssn >= 150 ? "Very high" : S.ssn >= 100 ? "High" : S.ssn >= 50 ? "Moderate" : "Low");
+  const w = SW.wind ? SW.wind.proton_speed : null, bz = SW.mag ? SW.mag.bz_gsm : null;
+  const wEl = document.getElementById("wind"), bEl = document.getElementById("bz");
+  wEl.textContent = w != null ? w : "–"; wEl.className = "v" + (w >= 700 ? " badv" : w >= 500 ? " warnv" : "");
+  set("windN", w == null ? "" : `km/s · ${w >= 700 ? "Very fast" : w >= 500 ? "Fast" : "Normal"}`);
+  bEl.textContent = bz != null ? (bz > 0 ? "+" : "") + bz : "–"; bEl.className = "v" + (bz != null && bz <= -10 ? " badv" : bz != null && bz <= -5 ? " warnv" : "");
+  set("bzN", bz == null ? "" : `nT · ${bz <= -5 ? "South: storm risk" : bz < 0 ? "Slightly south" : "North: calm"}`);
+  // trends: flux vs 3 days ago, sunspots vs a week ago, Kp vs 3 hours ago
+  const dly = SW.daily, ago = n => dly.length > n ? dly[dly.length - 1 - n] : null;
+  trend(document.getElementById("sfiT"), S.sfi, ago(3) && ago(3).sfi, 3);
+  trend(document.getElementById("ssnT"), S.ssn, ago(7) && ago(7).ssn, 5);
+  const pastKp = SW.kp.filter(r => r.t <= Date.now());
+  trend(document.getElementById("kpT"), S.kp, pastKp.length > 1 ? pastKp[pastKp.length - 2].kp : null, 0.4);
+  document.getElementById("hfNow").innerHTML = hfImpact({ sfi: S.sfi, kp: S.kp, xray: S.xray, bz, forecast: false });
+  document.getElementById("swAsOf").textContent = SW.loaded ? "NOAA SWPC" : "";
+  renderSwAlert();
+  if (!document.getElementById("swMoreBody").hidden) renderSwMore();
 }
+// Banner: anything happening now, or the first storm in NOAA's forecast
+function renderSwAlert() {
+  const el = document.getElementById("swAlert"), now = Date.now(), sc = SW.scales && SW.scales["0"];
+  let msg = "", red = false;
+  const r = sc ? +sc.R.Scale : 0, s = sc ? +sc.S.Scale : 0, g = sc ? +sc.G.Scale : 0;
+  if (r >= 1) { msg = `⚠️ <b>Radio blackout R${r} in progress.</b> Daytime HF may fade out.`; red = true; }
+  else if (g >= 1) { msg = `⚠️ <b>Geomagnetic storm G${g} in progress.</b> Northern paths are degraded; watch 6m/2m for aurora.`; red = true; }
+  else if (s >= 1) { msg = `⚠️ <b>Solar radiation storm S${s}.</b> Polar HF paths may be blacked out.`; red = true; }
+  else {
+    const next = SW.kp.find(x => x.t > now && x.kp >= 4.67);
+    if (next) msg = `⚠️ <b>Geomagnetic storm forecast</b> ${fmtDay(next.t)} around ${new Date(next.t).toLocaleTimeString([], { hour: "numeric" })} (Kp ${next.kp.toFixed(0)}, G${gLevel(next.kp)}).`;
+    else {
+      const o = SW.outlook.find(x => x.t > now && x.kpMax >= 5);
+      if (o) {
+        const days = Math.round((o.t - dayUTC(now)) / 864e5);
+        msg = `⚠️ <b>Storm possible ${fmtDay(o.t)}</b> (${days} days away): NOAA's 27-day outlook shows Kp ${o.kpMax} (G${gLevel(o.kpMax)}).`;
+      }
+    }
+  }
+  el.hidden = !msg; el.className = "swalert" + (red ? " red" : ""); el.innerHTML = msg;
+}
+
+// ----- "More": timeline chart + slider, 3-day outlook, the Sun -----
+let swSel = null;      // selected time on the timeline (ms); null = now
+function swRange() {
+  const now = Date.now(), start = dayUTC(now) - 7 * 864e5;
+  const lastOut = SW.outlook.length ? SW.outlook[SW.outlook.length - 1].t + 864e5 : now + 3 * 864e5;
+  const lastKp = SW.kp.length ? SW.kp[SW.kp.length - 1].t + 3 * 3600e3 : now;
+  return { start, end: Math.max(lastOut, lastKp), now };
+}
+function cssVar(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim() || "#888"; }
+function drawSwChart() {
+  const cv = document.getElementById("swChart"), dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth, H = cv.clientHeight; if (!W) return;
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+  const { start, end, now } = swRange(), padL = 24, padR = 30, padT = 16, padB = 18;
+  const X = t => padL + (t - start) / (end - start) * (W - padL - padR);
+  const kpTop = padT + (H - padT - padB) * 0.38, kpBot = H - padB, KY = kp => kpBot - kp / 9 * (kpBot - kpTop);
+  // forecast shading
+  ctx.fillStyle = "rgba(242,179,61,.07)"; ctx.fillRect(X(now), padT, X(end) - X(now), kpBot - padT);
+  // Kp scale and the storm line at Kp 5
+  ctx.font = "10px -apple-system, Segoe UI, sans-serif"; ctx.fillStyle = cssVar("--muted"); ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  for (const k of [0, 5, 9]) {
+    ctx.strokeStyle = k === 5 ? "rgba(229,96,79,.6)" : "rgba(255,255,255,.08)"; ctx.setLineDash(k === 5 ? [4, 4] : []);
+    ctx.beginPath(); ctx.moveTo(padL, KY(k)); ctx.lineTo(W - padR, KY(k)); ctx.stroke(); ctx.fillText(k, padL - 5, KY(k));
+  }
+  ctx.setLineDash([]);
+  ctx.save(); ctx.translate(9, (kpTop + kpBot) / 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = "center"; ctx.fillText("Kp", 0, 0); ctx.restore();
+  // Kp bars: 3-hour where available, the day's largest Kp beyond that
+  const lastK = SW.kp.length ? SW.kp[SW.kp.length - 1].t + 3 * 3600e3 : start;
+  for (const r of SW.kp) {
+    if (r.t + 3 * 3600e3 < start) continue;
+    const x0 = X(r.t), x1 = X(r.t + 3 * 3600e3), v = Math.max(r.kp, 0.15);
+    ctx.globalAlpha = r.t > now ? 0.55 : 1; ctx.fillStyle = cssVar(kpColor(r.kp));
+    ctx.fillRect(x0, KY(v), Math.max(1, x1 - x0 - 0.5), kpBot - KY(v));
+  }
+  for (const o of SW.outlook) {
+    if (o.t + 864e5 <= lastK) continue;
+    const x0 = X(Math.max(o.t, lastK)), x1 = X(o.t + 864e5);
+    ctx.globalAlpha = 0.45; ctx.fillStyle = cssVar(kpColor(o.kpMax));
+    ctx.fillRect(x0 + 0.5, KY(o.kpMax), Math.max(1, x1 - x0 - 1.5), kpBot - KY(o.kpMax));
+  }
+  ctx.globalAlpha = 1;
+  // solar flux line (daily): measured solid, forecast dashed
+  const pts = [...SW.daily.filter(r => r.t >= start - 864e5 && r.t < dayUTC(now)).map(r => ({ t: r.t + 432e5, v: r.sfi, f: false })),
+    { t: now, v: S.sfi, f: false }, ...SW.outlook.filter(r => r.t > dayUTC(now)).map(r => ({ t: r.t + 432e5, v: r.sfi, f: true }))].filter(p => p.v);
+  if (pts.length > 1) {
+    const vs = pts.map(p => p.v), lo = Math.min(...vs) - 8, hi = Math.max(...vs) + 8;
+    const FY = v => padT + (1 - (v - lo) / (hi - lo)) * (kpTop - padT + (kpBot - kpTop) * 0.35);
+    ctx.lineWidth = 2; ctx.strokeStyle = cssVar("--accent");
+    for (const dash of [false, true]) {
+      ctx.setLineDash(dash ? [5, 4] : []); ctx.beginPath(); let on = false;
+      pts.forEach((p, i) => {
+        const use = dash ? (p.f || (pts[i + 1] && pts[i + 1].f)) : !p.f;
+        if (!use) { on = false; return; }
+        if (!on) { ctx.moveTo(X(p.t), FY(p.v)); on = true; } else ctx.lineTo(X(p.t), FY(p.v));
+      });
+      ctx.stroke();
+    }
+    ctx.setLineDash([]); ctx.fillStyle = cssVar("--accent"); ctx.textAlign = "left";
+    ctx.fillText(Math.round(hi - 8), W - padR + 4, FY(hi - 8)); ctx.fillText(Math.round(lo + 8), W - padR + 4, FY(lo + 8));
+  }
+  // day labels
+  ctx.fillStyle = cssVar("--muted"); ctx.textAlign = "center"; ctx.textBaseline = "alphabetic"; ctx.font = "10px -apple-system, Segoe UI, sans-serif";
+  const stepDays = W < 500 ? 7 : 4;
+  for (let t = start; t <= end - 864e5; t += stepDays * 864e5)
+    ctx.fillText(new Date(t).toLocaleDateString([], { month: "numeric", day: "numeric", timeZone: "UTC" }), X(t + 432e5), H - 4);
+  // now line and the selected time
+  ctx.strokeStyle = cssVar("--text"); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(X(now), padT); ctx.lineTo(X(now), kpBot); ctx.stroke();
+  ctx.fillStyle = cssVar("--text"); ctx.font = "700 10px -apple-system, Segoe UI, sans-serif"; ctx.fillText("now", X(now), padT - 4);
+  if (swSel != null) {
+    ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2; ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(X(swSel), padT); ctx.lineTo(X(swSel), kpBot); ctx.stroke(); ctx.setLineDash([]);
+  }
+}
+function renderSwReadout() {
+  const now = Date.now(), t = swSel ?? now, a = swAt(t), el = document.getElementById("swReadout");
+  const when = swSel == null ? "Right now" : new Date(t).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric" });
+  const g = a.kp != null ? gLevel(a.kp) : 0;
+  const kpTxt = a.kp == null ? "–" : `${a.kp.toFixed(a.kpDaily ? 0 : 1)}${a.kpDaily ? " (day's high)" : ""}${g ? ` · storm G${g}` : ""}`;
+  const canPlan = a.forecast && t - now > 3 * 3600e3 && SW.outlook.some(o => o.t === dayUTC(t)) && !HOME.unset;
+  el.innerHTML = `<div><span class="when">${when}</span> <span class="src">· ${a.src}</span></div>
+    <div class="vals">Solar flux <b>${a.sfi ?? "–"}</b> · Kp <b>${kpTxt}</b>${a.ssn != null ? ` · Sunspots <b>${a.ssn}</b>` : ""}</div>
+    <div>${hfImpact({ sfi: a.sfi, kp: a.kp, xray: swSel == null ? S.xray : null, bz: swSel == null && SW.mag ? SW.mag.bz_gsm : null, forecast: a.forecast })}</div>
+    ${canPlan ? `<button class="resetbtn planbtn" id="swPlan">See the HF forecast for ${new Date(t).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })} ↓</button>` : ""}`;
+  const pb = document.getElementById("swPlan");
+  if (pb) pb.onclick = () => planPropDay(t, a.sfi);
+}
+function renderSwOutlook() {
+  const box = document.getElementById("swOutlook"), sc = SW.scales, fp = SW.flare;
+  if (!sc) { box.innerHTML = `<div class="sub">The outlook isn't available right now.</div>`; return; }
+  const rows = ["1", "2", "3"].map((k, i) => {
+    const d = sc[k]; if (!d) return "";
+    const t = Date.parse(d.DateStamp + "T00:00:00Z");
+    const kps = SW.kp.filter(r => dayUTC(r.t) === t).map(r => r.kp), kmax = kps.length ? Math.max(...kps) : null;
+    const g = kmax != null ? gLevel(kmax) : (+d.G.Scale || 0);
+    const fl = fp ? `${fp[`c_class_${i + 1}_day`]}/${fp[`m_class_${i + 1}_day`]}/${fp[`x_class_${i + 1}_day`]}%` : "–";
+    return `<tr><td>${fmtDay(t)}</td><td>${kmax != null ? kmax.toFixed(1) : "–"} <span class="gtag ${g >= 2 ? "g2" : g === 1 ? "g1" : ""}">G${g}</span></td>
+      <td>${d.R.MinorProb ?? "–"}%</td><td>${fl}</td></tr>`;
+  }).join("");
+  box.innerHTML = `<table><thead><tr><th>Day</th><th>Max Kp</th><th title="Chance of an R1–R2 radio blackout">Blackout</th><th title="Chance of C, M and X class flares">Flares C/M/X</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+let sunWave = "0193";
+try { const w = localStorage.getItem("hamdash.sunwave"); if (["0193", "HMIIC", "0131"].includes(w)) sunWave = w; } catch {}
+const SUN_CAPS = {
+  "0193": "Dark patches are coronal holes. Their fast solar wind can bring storms about 3 days after they face Earth.",
+  "HMIIC": "Visible light: the dark spots are sunspots. More spots means higher flux and better high bands.",
+  "0131": "Hot flare plasma. Bright spots are active regions that can produce flares and radio blackouts.",
+};
+function renderSun() {
+  const img = document.getElementById("sunImg"), stamp = Math.floor(Date.now() / 9e5);   // fresh image every 15 min
+  const src = `https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_${sunWave}.jpg?${stamp}`;
+  if (img.dataset.src !== src) { img.src = src; img.dataset.src = src; }
+  document.getElementById("sunLink").href = `https://sdo.gsfc.nasa.gov/assets/img/latest/latest_2048_${sunWave}.jpg`;
+  document.querySelectorAll("#sunChips button").forEach(b => b.classList.toggle("on", b.dataset.w === sunWave));
+  document.getElementById("sunCap").textContent = "Live from NASA SDO · tap to enlarge. " + SUN_CAPS[sunWave];
+}
+function renderSwCycle() {
+  const el = document.getElementById("swCycle"), c = SW.cycle;
+  if (!c) { el.textContent = ""; return; }
+  const ym = new Date().toISOString().slice(0, 7), m = c.find(r => r["time-tag"] === ym);
+  el.textContent = m ? `Solar Cycle 25: NOAA expects this month to average a sunspot number of about ${Math.round(m.predicted_ssn)} and flux of about ${Math.round(m["predicted_f10.7"])}. Latest: sunspot number ${S.ssn ?? "–"}, flux ${S.sfi ?? "–"}.` : "";
+}
+function renderSwMore() {
+  const { start, end, now } = swRange(), sl = document.getElementById("swSlider");
+  sl.max = Math.max(1, Math.round((end - start) / (3 * 3600e3)));
+  sl.value = Math.round(((swSel ?? now) - start) / (3 * 3600e3));
+  drawSwChart(); renderSwReadout(); renderSwOutlook(); renderSun(); renderSwCycle();
+}
+document.getElementById("swSlider").oninput = e => {
+  const { start, now } = swRange();
+  const t = start + (+e.target.value) * 3 * 3600e3;
+  swSel = Math.abs(t - now) < 1.5 * 3600e3 ? null : t;
+  drawSwChart(); renderSwReadout();
+};
+function setSwMore(open) {
+  const body = document.getElementById("swMoreBody"), btn = document.getElementById("swMore");
+  body.hidden = !open; btn.setAttribute("aria-expanded", String(open));
+  btn.textContent = open ? "Hide timeline ▲" : "Timeline, 3-day outlook and the Sun ▼";
+  if (open) renderSwMore();
+}
+document.getElementById("swMore").onclick = () => {
+  const open = document.getElementById("swMoreBody").hidden;
+  setSwMore(open);
+  try { localStorage.setItem("hamdash.swmore", open ? "1" : "0"); } catch {}
+};
+document.querySelectorAll("#sunChips button").forEach(b => b.onclick = () => {
+  sunWave = b.dataset.w; try { localStorage.setItem("hamdash.sunwave", sunWave); } catch {}
+  renderSun();
+});
+window.addEventListener("resize", () => { if (!document.getElementById("swMoreBody").hidden) drawSwChart(); });
+try { if (localStorage.getItem("hamdash.swmore") === "1") setSwMore(true); } catch {}
 
 const BANDS = [
   { b: "80m", day: 0,   night: 0,   lowBand: true },
@@ -1565,6 +1898,7 @@ const PROP_REGIONS = [
 ];
 const PROP_BANDS = [["80m", 3.6], ["40m", 7.15], ["30m", 10.125], ["20m", 14.15], ["17m", 18.118], ["15m", 21.2], ["12m", 24.94], ["10m", 28.5]];
 let propRegion = "EU", propMode = "SSB", propData = null, propSel = null, propKey = "", propState = "idle", propWorker = null;
+let propPlan = null;   // { start, sfi } when looking ahead at a future day from the solar timeline
 try { propRegion = localStorage.getItem("hamdash.propregion") || "EU"; propMode = localStorage.getItem("hamdash.propmode") || "SSB"; } catch {}
 if (!PROP_REGIONS.some(r => r.id === propRegion)) propRegion = "EU";
 if (propMode !== "CW") propMode = "SSB";
@@ -1618,9 +1952,9 @@ const ssnFromSfi = sfi => Math.max(0, (-0.728 + Math.sqrt(0.728 ** 2 - 4 * 0.000
 
 function runPropForecast(force) {
   if (HOME.unset) { propState = "nohome"; renderProp(); return; }
-  const sfi = S.sfi || 100, ssn = Math.round(ssnFromSfi(sfi));
-  const now = new Date(), hour0 = now.getUTCHours();
-  const key = [HOME.lat.toFixed(2), HOME.lon.toFixed(2), ssn, now.getUTCMonth(), now.toISOString().slice(0, 13)].join("|");
+  const sfi = propPlan ? propPlan.sfi : (S.sfi || 100), ssn = Math.round(ssnFromSfi(sfi));
+  const now = propPlan ? new Date(propPlan.start) : new Date(), hour0 = now.getUTCHours();
+  const key = [HOME.lat.toFixed(2), HOME.lon.toFixed(2), ssn, now.getUTCMonth(), now.toISOString().slice(0, 13), propPlan ? "plan" : "live"].join("|");
   if (!force && key === propKey && propData) return;
   if (propState === "running") { runPropForecast.again = true; return; }
   propState = propData ? "updating" : "loading"; renderProp();
@@ -1688,6 +2022,7 @@ function propCell(regionId, k, band) {
 }
 const PROP_WORD = { g: "Good", f: "Fair", p: "Poor", x: "Closed" };
 function renderProp() {
+  renderPropPlan();
   const regions = document.getElementById("propRegions");
   regions.innerHTML = PROP_REGIONS.map(r => `<button data-r="${r.id}" class="${r.id === propRegion ? "on" : ""}" aria-pressed="${r.id === propRegion}">${r.name}</button>`).join("");
   regions.querySelectorAll("button").forEach(b => b.onclick = () => {
@@ -1704,8 +2039,8 @@ function renderProp() {
       : "Loading the VOACAP propagation model… The first time takes a little longer (about 10 MB).";
     status.textContent = ""; return;
   }
-  const nowK = Math.min(23, Math.max(0, Math.floor((Date.now() - propData.t0) / 3600e3)));
-  if (!propSel || propSel.k > 23) propSel = { k: nowK, b: null };
+  const nowK = propPlan ? -1 : Math.min(23, Math.max(0, Math.floor((Date.now() - propData.t0) / 3600e3)));
+  if (!propSel || propSel.k > 23) propSel = { k: propPlan ? 12 : nowK, b: null };
   const cells = PROP_BANDS.map(b => Array.from({ length: 24 }, (_, k) => propCell(propRegion, k, b)));
   if (propSel.b == null) {                                  // default: the best band right now
     let best = 3; for (let i = PROP_BANDS.length - 1; i >= 0; i--) if ("xpfg".indexOf(cells[i][propSel.k].lvl) > "xpfg".indexOf(cells[best][propSel.k].lvl)) best = i;
@@ -1721,14 +2056,31 @@ function renderProp() {
   grid.innerHTML = html;
   grid.querySelectorAll(".c").forEach(el => el.onclick = () => { propSel = { k: +el.dataset.k, b: +el.dataset.b }; renderProp(); });
   const c = cells[propSel.b][propSel.k], r = PROP_REGIONS.find(x => x.id === propRegion), band = PROP_BANDS[propSel.b][0];
-  const at = propSel.k === nowK ? "right now" : "at " + new Date(propData.t0 + propSel.k * 3600e3).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const at = propSel.k === nowK ? "right now" : propPlan
+    ? "on " + new Date(propData.t0 + propSel.k * 3600e3).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })
+    : "at " + new Date(propData.t0 + propSel.k * 3600e3).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   const lim = Math.min(c.ionoLvl, c.absLvl, c.pathLvl);
   const why = c.lvl === "g" ? "" : c.ionoLvl === lim ? (c.ionoLvl === 0 ? " · band is above the MUF" : " · close to the MUF")
     : c.absLvl === lim ? " · daytime absorption" : " · long multi-hop path";
   detail.innerHTML = c.muf
     ? `<b>${band}</b> to <b>${esc(r.name)}</b> ${at}: <b class="tag${c.lvl}">${PROP_WORD[c.lvl]}</b>${why}. MUF ${c.muf.toFixed(1)} MHz · ${c.hops} hop${c.hops > 1 ? "s" : ""} · ${Math.round(bearingTo(r))}° beam heading`
     : `No forecast for ${esc(r.name)} at this hour.`;
-  status.textContent = `${propMode}, 100 W · SFI ${propData.sfi}${propState === "updating" ? " · updating…" : ""}`;
+  status.textContent = `${propMode}, 100 W · SFI ${propData.sfi}${propPlan ? " (NOAA forecast)" : ""}${propState === "updating" ? " · updating…" : ""}`;
+}
+function renderPropPlan() {
+  const bar = document.getElementById("propPlanBar");
+  if (!propPlan) { bar.hidden = true; return; }
+  bar.hidden = false;
+  bar.innerHTML = `<span>Planning <b>${new Date(propPlan.start).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })}</b> using NOAA's forecast flux of ${propPlan.sfi}</span>
+    <button class="resetbtn" id="propPlanBack">Back to now</button>`;
+  document.getElementById("propPlanBack").onclick = () => { propPlan = null; propSel = null; renderPropPlan(); runPropForecast(true); renderProp(); };
+}
+// From the solar timeline: forecast a whole future day (local midnight to midnight) with that day's predicted flux
+function planPropDay(t, sfi) {
+  const d = new Date(t); d.setHours(0, 0, 0, 0);
+  propPlan = { start: d.getTime(), sfi: sfi || S.sfi || 100 };
+  propSel = null; renderPropPlan(); runPropForecast(true); renderProp();
+  document.getElementById("propPanel").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 document.querySelectorAll("#propMode button").forEach(b => b.onclick = () => {
   propMode = b.dataset.m; try { localStorage.setItem("hamdash.propmode", propMode); } catch {}
