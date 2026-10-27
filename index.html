@@ -385,7 +385,7 @@
 <body>
 <header>
   <h1>Ham<span>Dash</span></h1>
-  <div class="vnum">v1.10.0</div>
+  <div class="vnum">v1.10.2</div>
   <div class="sub" id="updated">Loading…</div>
   <div class="sub vdate">10/26/2026</div>
 </header>
@@ -547,7 +547,7 @@
 
   <section class="panel full" id="potaPanel">
     <div class="panelhead">
-      <h2>Parks on the Air</h2>
+      <h2>POTA</h2>
       <div class="potahead"><span class="sub" id="potaCount"></span><button class="resetbtn" id="potaReset" hidden>Reset view</button></div>
     </div>
     <div class="chips" id="potaChips"></div>
@@ -978,7 +978,7 @@ function renderSolar() {
   const pastKp = SW.kp.filter(r => r.t <= Date.now());
   trend(document.getElementById("kpT"), S.kp, pastKp.length > 1 ? pastKp[pastKp.length - 2].kp : null, 0.4);
   document.getElementById("hfNow").innerHTML = hfImpact({ sfi: S.sfi, kp: S.kp, xray: S.xray, bz, forecast: false });
-  document.getElementById("swAsOf").textContent = SW.loaded ? "NOAA SWPC" : "";
+  document.getElementById("swAsOf").textContent = "";
   renderSwAlert();
   if (!document.getElementById("swMoreBody").hidden) renderSwMore();
 }
