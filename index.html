@@ -353,7 +353,7 @@
 <body>
 <header>
   <h1>Ham<span>Dash</span></h1>
-  <div class="vnum">v1.9.2</div>
+  <div class="vnum">v1.9.3</div>
   <div class="sub" id="updated">Loading…</div>
   <div class="sub vdate">10/26/2026</div>
 </header>
@@ -402,7 +402,7 @@
             <button type="submit">Set</button>
           </form>
           <button type="button" class="mitem" id="wxUseGps" data-mode="gps">📍 Use GPS</button>
-          <button type="button" class="mitem" id="wxUseGrid" data-mode="grid">🗺️ Use my grid square</button>
+          <button type="button" class="mitem" id="wxUseGrid" data-mode="grid">🗺️ Use my station location</button>
           <div class="mmsg" id="wxLocMsg"></div>
           <div class="msep"></div>
           <button type="button" class="mitem" id="stEditStation">✏️ Edit callsign &amp; grid</button>
@@ -1838,7 +1838,7 @@ const CLASSES = { TECHNICIAN: "Technician", GENERAL: "General", EXTRA: "Amateur 
 
 function openSetup(canCancel) {
   setupEl.hidden = false; homeErr.textContent = "";
-  gridIn.value = HOME.unset ? "" : HOME.grid;
+  gridIn.value = HOME.unset ? "" : HOME.grid; gridIn.dataset.typed = "";
   callIn.value = MY.call || "";
   document.getElementById("homeCancel").hidden = !canCancel;
   setupEl.scrollIntoView({ block: "nearest" });
@@ -1851,9 +1851,18 @@ function useHome(grid) {
   drawGrayMap(); rebuildActBase(); drawClocks(); renderActivity(); loadWeather(); computePasses(); drawSatMap(); runPropForecast(true);
 }
 const GRID_RE = /^[A-Ra-r]{2}\d{2}([A-Xa-x]{2})?$/;
+gridIn.addEventListener("input", () => { gridIn.dataset.typed = "1"; });
+// A new callsign means a new location: if the grid box still holds the old grid (not typed by hand),
+// clear it so the grid comes from the FCC record for the new call.
+callIn.addEventListener("input", () => {
+  const c = callIn.value.trim().toUpperCase();
+  if (!gridIn.dataset.typed && c !== (MY.call || "")) gridIn.value = "";
+  else if (!gridIn.dataset.typed && c === (MY.call || "") && !HOME.unset) gridIn.value = HOME.grid;
+});
 async function saveSetup() {
   const call = callIn.value.trim().toUpperCase().replace(/\s+/g, "");
   let grid = gridIn.value.trim();
+  if (call && call !== (MY.call || "") && !gridIn.dataset.typed) grid = "";   // use the FCC grid for a new call
   homeErr.textContent = "";
   if (!call && !grid) { homeErr.textContent = "Enter your callsign, your grid square, or both."; return; }
   if (call && !/^[A-Z0-9\/]{3,14}$/.test(call) || call && !/\d/.test(call)) { homeErr.textContent = "That doesn't look like a callsign. Check it and try again."; return; }
@@ -1887,6 +1896,8 @@ async function saveSetup() {
   MY = next;
   try { localStorage.setItem("hamdash.station", JSON.stringify(MY)); } catch {}
   setupEl.hidden = true;
+  // the weather follows your station: saving your callsign / grid points the weather there
+  if (typeof WXLOC === "object") { WXLOC.mode = "grid"; saveWxLoc(); }
   useHome(grid);
   renderStation();
   if (callChanged) resetMySpots();
@@ -1941,7 +1952,7 @@ function wxEmoji(text, isDay) {
 const IS_PHONE = /iPhone|iPod|Android.+Mobile/.test(navigator.userAgent);
 let WXLOC = {};
 try { WXLOC = JSON.parse(localStorage.getItem("hamdash.wxloc")) || {}; } catch {}
-if (!["grid", "zip", "gps"].includes(WXLOC.mode)) WXLOC.mode = IS_PHONE ? "gps" : "grid";
+if (!["grid", "zip", "gps"].includes(WXLOC.mode)) WXLOC.mode = "grid";
 const saveWxLoc = () => { try { localStorage.setItem("hamdash.wxloc", JSON.stringify(WXLOC)); } catch {} };
 const wxLocMsg = t => { document.getElementById("wxLocMsg").textContent = t; };
 // Ask the phone for a position. A quick, low-power try first; if that times out or can't get a fix
@@ -1983,7 +1994,7 @@ async function wxTarget() {
   }
   return HOME.unset ? null : { lat: HOME.lat, lon: HOME.lon, src: WXLOC.mode === "gps" ? "gps-fallback" : "grid" };
 }
-const wxModeText = src => src === "zip" ? `ZIP ${WXLOC.zip}` : src === "gps" ? "GPS" : src === "gps-fallback" ? "your grid, GPS off" : "your grid";
+const wxModeText = src => src === "zip" ? `ZIP ${WXLOC.zip}` : src === "gps" ? "GPS" : src === "gps-fallback" ? "your station, GPS off" : (MY.call ? MY.call + "'s location" : "your grid");
 const stMenu = document.getElementById("stMenu"), stMenuBtn = document.getElementById("homeEdit");
 function toggleStMenu(open = stMenu.hidden) {
   stMenu.hidden = !open; stMenuBtn.setAttribute("aria-expanded", open);
