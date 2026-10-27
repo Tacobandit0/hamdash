@@ -247,7 +247,7 @@
 <body>
 <header>
   <h1>Ham<span>Dash</span></h1>
-  <div class="vnum">v1.5.0</div>
+  <div class="vnum">v1.5.2</div>
   <div class="sub" id="updated">Loading…</div>
   <div class="sub vdate">10/25/2026</div>
 </header>
@@ -303,25 +303,6 @@
       <span class="sub" id="bandsWhen"></span>
     </div>
     <div class="bandgrid" id="bands"></div>
-  </section>
-
-  <section class="panel full" id="propPanel">
-    <div class="panelhead">
-      <h2>Propagation forecast</h2>
-      <div class="seg" id="propMode">
-        <button data-m="SSB">SSB</button>
-        <button data-m="CW">CW</button>
-      </div>
-    </div>
-    <div class="chips" id="propRegions"></div>
-    <div class="propwrap">
-      <div class="propgrid" id="propGrid" role="grid" aria-label="Band forecast for the next 24 hours"></div>
-    </div>
-    <div class="propdetail" id="propDetail"></div>
-    <div class="legend proplegend">
-      <span><i class="pg"></i>Good</span><span><i class="pf"></i>Fair</span><span><i class="pp"></i>Poor</span><span><i class="pc"></i>Closed</span>
-      <span class="sub" id="propStatus"></span>
-    </div>
   </section>
 
   <section class="panel full">
@@ -380,6 +361,25 @@
     </div>
     <div class="satlist" id="satList"></div>
     <button class="morebtn" id="satMore" hidden>Show more passes</button>
+  </section>
+
+  <section class="panel full" id="propPanel">
+    <div class="panelhead">
+      <h2>HF propagation forecast</h2>
+      <div class="seg" id="propMode">
+        <button data-m="SSB">SSB</button>
+        <button data-m="CW">CW</button>
+      </div>
+    </div>
+    <div class="chips" id="propRegions"></div>
+    <div class="propwrap">
+      <div class="propgrid" id="propGrid" role="grid" aria-label="Band forecast for the next 24 hours"></div>
+    </div>
+    <div class="propdetail" id="propDetail"></div>
+    <div class="legend proplegend">
+      <span><i class="pg"></i>Good</span><span><i class="pf"></i>Fair</span><span><i class="pp"></i>Poor</span><span><i class="pc"></i>Closed</span>
+      <span class="sub" id="propStatus"></span>
+    </div>
   </section>
 
   <section class="panel full">
